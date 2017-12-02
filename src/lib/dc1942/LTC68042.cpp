@@ -62,7 +62,6 @@ Copyright 2013 Linear Technology Corp. (LTC)
 
 #include <stdint.h>
 #include <Arduino.h>
-#include "Linduino.h"
 #include "LT_SPI.h"
 #include "LTC68042.h"
 #include <SPI.h>

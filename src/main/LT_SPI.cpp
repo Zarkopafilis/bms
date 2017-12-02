@@ -37,24 +37,8 @@ SPI2X  SPR1  SPR0  Frequency  Uno_Frequency
 //Default Slave Select pin for Teensy 3.0+
 #define QUIKEVAL_CS 10
 
-//See https://github.com/btmcmahan/Teensy-3.0-SPI-Master---Slave/blob/master/t3spi.h
 #define MASTER        1
 #define SLAVE       0
-
-#define SPI_CLOCK_DIV2    0b0000  //24.0  MHz
-#define SPI_CLOCK_DIV4    0b0001  //12.0  MHz
-#define SPI_CLOCK_DIV6    0b0010  //08.0  MHz
-#define SPI_CLOCK_DIV8    0b0011  //05.3  MHz
-#define SPI_CLOCK_DIV16   0b0100  //03.0  MHz
-#define SPI_CLOCK_DIV32   0b0101  //01.5  MHz
-#define SPI_CLOCK_DIV64   0b0110  //750 KHz
-#define SPI_CLOCK_DIV128  0b0111  //375 Khz
-
-//Clock Polaritys and Edges
-#define SPI_MODE0     0x00
-#define SPI_MODE1     0x01
-#define SPI_MODE2     0x02
-#define SPI_MODE3     0x03
 
 // Reads and sends a byte
 // Return 0 if successful, 1 if failed
@@ -116,7 +100,7 @@ void spi_enable(uint8_t spi_clock_divider) // Configures SCK frequency. Use cons
 {
   pinMode(SCK, OUTPUT);             //! 1) Setup SCK as output
   pinMode(MOSI, OUTPUT);            //! 2) Setup MOSI as output
-//  pinMode(MISO, INPUT);
+  pinMode(MISO, INPUT);
   pinMode(QUIKEVAL_CS, OUTPUT);     //! 3) Setup CS as output
   SPI.begin();
   SPI.setClockDivider(spi_clock_divider);

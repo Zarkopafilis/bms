@@ -6,8 +6,8 @@
 /* Initializes the connection between the teensy and the attached LTC6804 */
 void LTC6804_initialize()
 {
-  //Clock Driver Constant SPI_CLOCK_DIV2 is the highest, at 24.0MHz
-  spi_enable(SPI_CLOCK_DIV2);
+  //Clock Driver Constant
+  spi_enable(SPI_CLOCK_DIV4);
 
   //Fast ADC Mode, Dishcharge Disabled, Measure All Cells, Measure All GPIOs
   //set_adc(MD_FAST,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);

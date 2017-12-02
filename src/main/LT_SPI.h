@@ -1,6 +1,5 @@
 //LT_SPI: Routines to communicate with Teensy's hardware SPI port.
 
-
 #ifndef LT_SPI_H
 #define LT_SPI_H
 
