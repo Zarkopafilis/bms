@@ -1,64 +1,35 @@
-/*
-	LTC6804-2 Multicell Battery Monitor
- 
-	The LTC6804 is a 3rd generation multicell battery stack
-	monitor that measures up to 12 series connected battery
-	cells with a total measurement error of less than 1.2mV. The
-	cell measurement range of 0V to 5V makes the LTC6804
-	suitable for most battery chemistries. All 12 cell voltages
-	can be captured in 290uS, and lower data acquisition rates
-	can be selected for high noise reduction.
-	
-	Using the LTC6804-2, multiple devices are connected in
-	parallel to the host processor, with each device 
-	individually addressed.
-
-  Library for LTC6804-2 Multicell Battery Monitor
-*/
-
+/*LTC6804-2 Multicell Battery Monitor Library*/
 #include <stdint.h>
 #include <Arduino.h>
 #include "LT_SPI.h"
 #include "LTC68042.h"
 #include <SPI.h>
 
-/*
-   ADC control Variables for LTC6804
-*/
-
-/*!
-  6804 conversion command variables.  
-*/
+/*ADC control Variables for LTC6804*/
+/*6804 conversion command variables.  */
 uint8_t ADCV[2]; //!< Cell Voltage conversion command.
 uint8_t ADAX[2]; //!< GPIO conversion command.
 
-/*!
-  \brief This function will initialize all 6804 variables and the SPI port.
-
-  input: 
-  ------
-  IC: number of ICs being controlled. The address of the ICs in a LTC6804-2 network will start at 0 and continue in an ascending order.
-*/
+/*This function will initialize all 6804 variables and the SPI port.
+Input: IC: number of ICs being controlled. The address of the ICs in a LTC6804-2 network will start at 0 and continue in an ascending order.*/
 void LTC6804_initialize()
 {
   spi_enable(SPI_CLOCK_DIV16);
   set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
 }
 
-/*!******************************************************************************************************************
- \brief Maps  global ADC control variables to the appropriate control bytes for each of the different ADC commands
+/*Maps  global ADC control variables to the appropriate control bytes for each of the different ADC commands
  
 @param[in] uint8_t MD The adc conversion mode
 @param[in] uint8_t DCP Controls if Discharge is permitted during cell conversions
 @param[in] uint8_t CH Determines which cells are measured during an ADC conversion command
 @param[in] uint8_t CHG Determines which GPIO channels are measured during Auxiliary conversion command
  
- Command Code: \n
+ Command Code:
 			|command	|  10   |   9   |   8   |   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   | 
 			|-----------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|
 			|ADCV:	    |   0   |   1   | MD[1] | MD[2] |   1   |   1   |  DCP  |   0   | CH[2] | CH[1] | CH[0] | 
-			|ADAX:	    |   1   |   0   | MD[1] | MD[2] |   1   |   1   |  DCP  |   0   | CHG[2]| CHG[1]| CHG[0]| 
- ******************************************************************************************************************/
+			|ADAX:	    |   1   |   0   | MD[1] | MD[2] |   1   |   1   |  DCP  |   0   | CHG[2]| CHG[1]| CHG[0]|*/
 void set_adc(uint8_t MD, //ADC Mode
 			 uint8_t DCP, //Discharge Permit
 			 uint8_t CH, //Cell Channels to be measured
@@ -76,14 +47,9 @@ void set_adc(uint8_t MD, //ADC Mode
   ADAX[0] = md_bits + 0x04;
   md_bits = (MD & 0x01) << 7;
   ADAX[1] = md_bits + 0x60 + CHG ;
+ }
 
-  
-  
-}
-
-
-/*!*********************************************************************************************
-  \brief Starts cell voltage conversion
+/*Starts cell voltage conversion
   
   Starts ADC conversions of the LTC6804 Cpin inputs.
   The type of ADC conversion done is set using the associated global variables:
@@ -91,12 +57,9 @@ void set_adc(uint8_t MD, //ADC Mode
  |--------|----------------------------------------------|
  | MD     | Determines the filter corner of the ADC      |
  | CH     | Determines which cell channels are converted |
- | DCP    | Determines if Discharge is Permitted	     |
-  
-***********************************************************************************************/
+ | DCP    | Determines if Discharge is Permitted	     |*/
 void LTC6804_adcv()
 {
-
   uint8_t cmd[4];
   uint16_t temp_pec;
   
@@ -116,11 +79,7 @@ void LTC6804_adcv()
   output_low(LTC6804_CS);
   spi_write_array(4,cmd);
   output_high(LTC6804_CS);
-
 }
-
-//---------------------------------------------------------------------
-
 
 void LTC6804_adcvax()
 {
@@ -142,30 +101,21 @@ void LTC6804_adcvax()
 
 }
 
-
-//---------------------------------------------------------------------
-
 /*
   LTC6804_adcv Function sequence:
-  
   1. Load adcv command into cmd array
   2. Calculate adcv cmd PEC and load pec into cmd array
   3. wakeup isoSPI port, this step can be removed if isoSPI status is previously guaranteed
-  4. send broadcast adcv command to LTC6804 stack
-*/
+  4. send broadcast adcv command to LTC6804 stack*/
 
-
-/*!******************************************************************************************************
- \brief Start an GPIO Conversion
+/*Start an GPIO Conversion
  
   Starts an ADC conversions of the LTC6804 GPIO inputs.
   The type of ADC conversion done is set using the associated global variables:
  |Variable|Function                                      | 
  |--------|----------------------------------------------|
  | MD     | Determines the filter corner of the ADC      |
- | CHG    | Determines which GPIO channels are converted |
- 
-*********************************************************************************************************/
+ | CHG    | Determines which GPIO channels are converted |*/
 void LTC6804_adax()
 {
   uint8_t cmd[4];
@@ -181,59 +131,41 @@ void LTC6804_adax()
   output_low(LTC6804_CS);
   spi_write_array(4,cmd);
   output_high(LTC6804_CS);
-
 }
-/*
-  LTC6804_adax Function sequence:
+/*LTC6804_adax Function sequence:
   
   1. Load adax command into cmd array
   2. Calculate adax cmd PEC and load pec into cmd array
   3. wakeup isoSPI port, this step can be removed if isoSPI status is previously guaranteed
-  4. send broadcast adax command to LTC6804 stack
-*/
+  4. send broadcast adax command to LTC6804 stack*/
 
 
-/***********************************************//**
- \brief Reads and parses the LTC6804 cell voltage registers.
+/*Reads and parses the LTC6804 cell voltage registers.
  
  The function is used to read the cell codes of the LTC6804.
  This function will send the requested read commands parse the data
  and store the cell voltages in cell_codes variable. 
  
- 
 @param[in] uint8_t reg; This controls which cell voltage register is read back. 
- 
           0: Read back all Cell registers 
-		  
           1: Read back cell group A 
-		  
           2: Read back cell group B 
-		  
           3: Read back cell group C 
-		  
           4: Read back cell group D 
- 
+
 @param[in] uint8_t total_ic; This is the number of ICs in the network
  
-
 @param[out] uint16_t cell_codes[]; An array of the parsed cell codes from lowest to highest. The cell codes will
   be stored in the cell_codes[] array in the following format:
   |  cell_codes[0]| cell_codes[1] |  cell_codes[2]|    .....     |  cell_codes[11]|  cell_codes[12]| cell_codes[13] |  .....   |
   |---------------|----------------|--------------|--------------|----------------|----------------|----------------|----------|
   |IC1 Cell 1     |IC1 Cell 2      |IC1 Cell 3    |    .....     |  IC1 Cell 12   |IC2 Cell 1      |IC2 Cell 2      | .....    |
  
- @return int8_t, PEC Status.
- 
+ @return int8_t, PEC Status:
 	0: No PEC error detected
-  
-	-1: PEC error detected, retry read
- *************************************************/
-uint8_t LTC6804_rdcv(uint8_t reg,
-					 uint8_t total_ic,
-					 uint16_t cell_codes[][12]
-					 )
+	-1: PEC error detected, retry read*/
+uint8_t LTC6804_rdcv(uint8_t reg, uint8_t total_ic, uint16_t cell_codes[][12])
 {
-  
   const uint8_t NUM_RX_BYT = 8;
   const uint8_t BYT_IN_REG = 6;
   const uint8_t CELL_IN_REG = 3;
@@ -301,9 +233,7 @@ uint8_t LTC6804_rdcv(uint8_t reg,
  //2
 return(pec_error);
 }
-/*
-	LTC6804_rdcv Sequence
-	
+/*LTC6804_rdcv Sequence
 	1. Switch Statement:
 		a. Reg = 0
 			i. Read cell voltage registers A-D for every IC in the stack
@@ -313,35 +243,25 @@ return(pec_error);
 			i.Read single cell voltage register for all ICs in stack
 			ii. Parse raw cell voltage data in cell_codes array
 			iii. Check the PEC of the data read back vs the calculated PEC for each read register command
-	2. Return pec_error flag
-*/
+	2. Return pec_error flag*/
 
 
-/***********************************************//**
- \brief Read the raw data from the LTC6804 cell voltage register
+/*Read the raw data from the LTC6804 cell voltage register
  
  The function reads a single cell voltage register and stores the read data
  in the *data point as a byte array. This function is rarely used outside of 
  the LTC6804_rdcv() command. 
  
  @param[in] uint8_t reg; This controls which cell voltage register is read back. 
-         
           1: Read back cell group A 
-		  
           2: Read back cell group B 
-		  
           3: Read back cell group C 
-		  
           4: Read back cell group D 
 		  
  @param[in] uint8_t total_ic; This is the number of ICs in the network
  
- @param[out] uint8_t *data; An array of the unparsed cell codes 
- *************************************************/
-void LTC6804_rdcv_reg(uint8_t reg,
-					  uint8_t total_ic, 
-					  uint8_t *data
-					  )
+ @param[out] uint8_t *data; An array of the unparsed cell codes*/
+void LTC6804_rdcv_reg(uint8_t reg, uint8_t total_ic, uint8_t *data)
 {
   uint8_t cmd[4];
   uint16_t temp_pec;
@@ -367,11 +287,7 @@ void LTC6804_rdcv_reg(uint8_t reg,
     cmd[1] = 0x0A;
     cmd[0] = 0x00;
   } 
-
-  //2
- 
-  
-  //3
+  //2, 3
   wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   
   //4
@@ -386,30 +302,23 @@ void LTC6804_rdcv_reg(uint8_t reg,
 	output_high(LTC6804_CS);
   }
 }
-/*
-  LTC6804_rdcv_reg Function Process:
+/*LTC6804_rdcv_reg Function Process:
   1. Determine Command and initialize command array
   2. Calculate Command PEC
   3. Wake up isoSPI, this step is optional
-  4. Send Global Command to LTC6804 stack
-*/
+  4. Send Global Command to LTC6804 stack*/
 
 
-/***********************************************************************************//**
- \brief Reads and parses the LTC6804 auxiliary registers.
+/*Reads and parses the LTC6804 auxiliary registers.
  
  The function is used
  to read the  parsed GPIO codes of the LTC6804. This function will send the requested 
  read commands parse the data and store the gpio voltages in aux_codes variable 
  
  @param[in] uint8_t reg; This controls which GPIO voltage register is read back. 
-		  
           0: Read back all auxiliary registers 
-		  
           1: Read back auxiliary group A 
-		  
           2: Read back auxiliary group B 
-		  
  
  @param[in] uint8_t total_ic; This is the number of ICs in the network
 
@@ -419,20 +328,11 @@ void LTC6804_rdcv_reg(uint8_t reg,
  |--------------|--------------|--------------|--------------|--------------|--------------|--------------|------------|-----------|
  |IC1 GPIO1     |IC1 GPIO2     |IC1 GPIO3     |IC1 GPIO4     |IC1 GPIO5     |IC1 Vref2     |IC2 GPIO1     |IC2 GPIO2   |  .....    |
  
- 
  @return int8_t, PEC Status.
- 
 	0: No PEC error detected
-  
-	-1: PEC error detected, retry read
- *************************************************/
-int8_t LTC6804_rdaux(uint8_t reg,
-					 uint8_t total_ic, 
-					 uint16_t aux_codes[][6]
-					 )
+	-1: PEC error detected, retry read*/
+int8_t LTC6804_rdaux(uint8_t reg, uint8_t total_ic, uint16_t aux_codes[][6])
 {
-
-
   const uint8_t NUM_RX_BYT = 8;
   const uint8_t BYT_IN_REG = 6;
   const uint8_t GPIO_IN_REG = 3;
@@ -455,11 +355,9 @@ int8_t LTC6804_rdaux(uint8_t reg,
       {									  								 // current_ic is used as an IC counter
         //a.ii
 		for(uint8_t current_gpio = 0; current_gpio< GPIO_IN_REG; current_gpio++)	// This loop parses GPIO voltages stored in the register
-        {								   													
-          
+        {								   													 
           aux_codes[current_ic][current_gpio +((gpio_reg-1)*GPIO_IN_REG)] = data[data_counter] + (data[data_counter+1]<<8);
           data_counter=data_counter+2;
-		  
         }
 		//a.iii
         received_pec = (data[data_counter]<<8)+ data[data_counter+1];
@@ -468,13 +366,9 @@ int8_t LTC6804_rdaux(uint8_t reg,
         {
           pec_error = -1;
         }
-       
         data_counter=data_counter+2;
       }
-   
-
     }
-  
   }
   else
   {
@@ -500,8 +394,7 @@ int8_t LTC6804_rdaux(uint8_t reg,
   free(data);
   return (pec_error);
 }
-/*
-	LTC6804_rdaux Sequence
+/*LTC6804_rdaux Sequence
 	
 	1. Switch Statement:
 		a. Reg = 0
@@ -512,28 +405,22 @@ int8_t LTC6804_rdaux(uint8_t reg,
 			i.Read single GPIO voltage register for all ICs in stack
 			ii. Parse raw GPIO voltage data in cell_codes array
 			iii. Check the PEC of the data read back vs the calculated PEC for each read register command
-	2. Return pec_error flag
-*/
+	2. Return pec_error flag*/
 
 
-/***********************************************//**
- \brief Read the raw data from the LTC6804 auxiliary register
+/*Read the raw data from the LTC6804 auxiliary register
  
  The function reads a single GPIO voltage register and stores thre read data
  in the *data point as a byte array. This function is rarely used outside of 
  the LTC6804_rdaux() command. 
  
- @param[in] uint8_t reg; This controls which GPIO voltage register is read back. 
-		  
+ @param[in] uint8_t reg; This controls which GPIO voltage register is read back.   
           1: Read back auxiliary group A
-		  
           2: Read back auxiliary group B 
-
          
  @param[in] uint8_t total_ic; This is the number of ICs in the stack
  
- @param[out] uint8_t *data; An array of the unparsed aux codes 
- *************************************************/
+ @param[out] uint8_t *data; An array of the unparsed aux codes*/
 void LTC6804_rdaux_reg(uint8_t reg, 
 					   uint8_t total_ic,
 					   uint8_t *data
@@ -739,11 +626,7 @@ void LTC6804_wrcfg(uint8_t total_ic,uint8_t config[][6])
 
 */
 
-/*!******************************************************
- \brief Reads configuration registers of a LTC6804 stack
- 
-
-
+/* Reads configuration registers of a LTC6804 stack
 
 @param[in] uint8_t total_ic: number of ICs in the stack
 
@@ -755,12 +638,9 @@ of the array, the second IC in the second 8 byte etc. Below is an table illustra
 |-----------|-----------|-----------|-----------|-----------|-----------|-------------|------------|-----------|-----------|-----------|
 |IC1 CFGR0  |IC1 CFGR1  |IC1 CFGR2  |IC1 CFGR3  |IC1 CFGR4  |IC1 CFGR5  |IC1 PEC High |IC1 PEC Low |IC2 CFGR0  |IC2 CFGR1  |  .....    |
 
-
 @return int8_t PEC Status.
 	0: Data read back has matching PEC
- 
-	-1: Data read back has incorrect PEC
-********************************************************/
+	-1: Data read back has incorrect PEC */
 int8_t LTC6804_rdcfg(uint8_t total_ic, uint8_t r_config[][8])
 {
   const uint8_t BYTES_IN_REG = 8;
@@ -810,39 +690,31 @@ int8_t LTC6804_rdcfg(uint8_t total_ic, uint8_t r_config[][8])
   //5
   return(pec_error);
 }
-/*
-	1. Load cmd array with the write configuration command and PEC
+/*1. Load cmd array with the write configuration command and PEC
 	2. wakeup isoSPI port, this step can be removed if isoSPI status is previously guaranteed
 	3. read configuration of each LTC6804 on the stack
 	4. For each LTC6804 in the stack
 	  a. load configuration data into r_config array
 	  b. calculate PEC of received data and compare against calculated PEC
-	5. Return PEC Error
+	5. Return PEC Error */
 
-*/
-
-/*!****************************************************
-  \brief Wake isoSPI up from idle state
- Generic wakeup commannd to wake isoSPI up out of idle
- *****************************************************/
+/*In general, look for wakeup_idle and wakeup_sleep on the prototype library. In our case, the monitoring modules
+are always awake from a hardware configuration due to the high speed needs of FS rules.
+We are not going to remove this function because there might be a need for it in the future.
+It's just not going to do anything for now. */
 void wakeup_idle()
 {
-  output_low(LTC6804_CS);
+  /*output_low(LTC6804_CS);
   delayMicroseconds(10); //Guarantees the isoSPI will be in ready mode
-  output_high(LTC6804_CS);
+  output_high(LTC6804_CS);*/
 }
-
-/*!****************************************************
-  \brief Wake the LTC6804 from the sleep state
-  
- Generic wakeup commannd to wake the LTC6804 from sleep
- *****************************************************/
 void wakeup_sleep()
 {
-  output_low(LTC6804_CS);
+  /*output_low(LTC6804_CS);
   delay(1); // Guarantees the LTC6804 will be in standby
-  output_high(LTC6804_CS);
+  output_high(LTC6804_CS);*/
 }
+
 /*!**********************************************************
  \brief calaculates  and returns the CRC15
   

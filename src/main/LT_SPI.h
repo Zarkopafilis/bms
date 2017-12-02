@@ -1,9 +1,5 @@
-/*
-LT_SPI: Routines to communicate with Teensy's hardware SPI port.
-
-LT_SPI implements the low level master SPI bus routines using
-the hardware SPI port. 
-*/
+/*LT_SPI implements the low level master SPI bus routines using
+the teensy's  SPI capabilities. */
 
 #ifndef LT_SPI_H
 #define LT_SPI_H
@@ -11,46 +7,33 @@ the hardware SPI port.
 #include <stdint.h>
 #include <SPI.h>
 
-// Reads and sends a byte
-// @return void
-void spi_transfer_byte(uint8_t cs_pin,      //!< Chip select pin
-                       uint8_t tx,          //!< Byte to be transmitted
-                       uint8_t *rx          //!< Byte to be received
-                      );
+//Default Slave Select pin - used as an "adapter" define
+#define QUIKEVAL_CS SS
 
-// Reads and sends a word
-// @return void
-void spi_transfer_word(uint8_t cs_pin,      //!< Chip select pin
-                       uint16_t tx,         //!< Byte to be transmitted
-                       uint16_t *rx         //!< Byte to be received
-                      );
+//Reads and sends a byte
+void spi_transfer_byte(uint8_t cs_pin, uint8_t tx, uint8_t *rx);
 
-// Reads and sends a byte array
-// @return void
-void spi_transfer_block(uint8_t cs_pin,     //!< Chip select pin
-                        uint8_t *tx,        //!< Byte array to be transmitted
-                        uint8_t *rx,        //!< Byte array to be received
-                        uint8_t length      //!< Length of array
-                       );
+//Reads and sends a word
+void spi_transfer_word(uint8_t cs_pin, uint16_t tx, uint16_t *rx);
 
-// Setup the processor for hardware SPI communication.
-// Must be called before using the other SPI routines.
-void spi_enable(uint8_t spi_clock_divider   //!< Configures SCK frequency. Use constant defined in header file.
-               );
+//Reads and sends a byte array
+void spi_transfer_block(uint8_t cs_pin,uint8_t *tx, uint8_t *rx,uint8_t length);
 
-// Disable the SPI hardware port
+//Setup the processor for SPI communication.
+//Must be called before using the other SPI routines.
+void spi_enable(uint8_t spi_clock_divider);
+
+//Disable the SPI communications
 void spi_disable();
 
-// Write a data byte using the SPI hardware
-void spi_write(int8_t data  //!< Byte to be written to SPI port
-              );
+//Write a data 
+void spi_write(int8_t data);
 
-// Read and write a data byte using the SPI hardware
-// @return the data byte read
-int8_t spi_read(int8_t data //!< The data byte to be written
-               );
+//Read and write a data byte
+//@return the read byte
+int8_t spi_read(int8_t data);
 
-//Wrapper to redirect calls to use the proper digitalWrite functions
+//Wrapper to redirect calls to use the proper digitalWrite functions for teensy
 void output_low(uint8_t pin);
 void output_high(uint8_t pin);
 

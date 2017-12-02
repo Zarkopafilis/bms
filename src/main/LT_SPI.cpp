@@ -10,9 +10,6 @@ the hardware SPI port.
 #include <SPI.h>
 #include "LT_SPI.h"
 
-//Default Slave Select pin - used as an "adapter" define
-#define QUIKEVAL_CS SS
-
 // Reads and sends a byte
 // Return 0 if successful, 1 if failed
 void spi_transfer_byte(uint8_t cs_pin, uint8_t tx, uint8_t *rx)
