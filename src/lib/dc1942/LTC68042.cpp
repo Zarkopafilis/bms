@@ -78,18 +78,13 @@ Copyright 2013 Linear Technology Corp. (LTC)
 uint8_t ADCV[2]; //!< Cell Voltage conversion command.
 uint8_t ADAX[2]; //!< GPIO conversion command.
 
-/*!
-  \brief This function will initialize all 6804 variables and the SPI port.
-
-  input: 
-  ------
-  IC: number of ICs being controlled. The address of the ICs in a LTC6804-2 network will start at 0 and continue in an ascending order.
-*/
+/*This function will initialize all 6804 variables and the SPI port.
+  input: IC: number of ICs being controlled. The address of the ICs in a LTC6804-2 network will start at 0 and continue in an ascending order.*/
 void LTC6804_initialize()
 {
-  quikeval_SPI_connect();
   spi_enable(SPI_CLOCK_DIV16);
-  set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
+  //We don't care about power consumption on the monitor, so:  we set the fastest adc speed possible, Discharge disabled, measure all cells, all GPIOs and 2nd ref point
+  set_adc(MD_FAST,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
 }
 
 /*!******************************************************************************************************************
@@ -123,9 +118,6 @@ void set_adc(uint8_t MD, //ADC Mode
   ADAX[0] = md_bits + 0x04;
   md_bits = (MD & 0x01) << 7;
   ADAX[1] = md_bits + 0x60 + CHG ;
-
-  
-  
 }
 
 

@@ -15,7 +15,11 @@ Input: IC: number of ICs being controlled. The address of the ICs in a LTC6804-2
 void LTC6804_initialize()
 {
   spi_enable(SPI_CLOCK_DIV16);
-  set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
+
+  //Fastest conversion mode
+  //Disabled Discharge
+  //AUX_CH_ALL measures all 5 GPIOs and 2nd Vref 
+  set_adc(MD_FAST,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
 }
 
 /*Maps  global ADC control variables to the appropriate control bytes for each of the different ADC commands
@@ -713,6 +717,19 @@ void wakeup_sleep()
   /*output_low(LTC6804_CS);
   delay(1); // Guarantees the LTC6804 will be in standby
   output_high(LTC6804_CS);*/
+}
+
+void actual_wakeup_idle(){
+  output_low(LTC6804_CS);
+  delayMicroseconds(10); //Guarantees the isoSPI will be in ready mode
+  output_high(LTC6804_CS);
+}
+
+void actual_wakeup_sleep()
+{
+  output_low(LTC6804_CS);
+  delay(1); // Guarantees the LTC6804 will be in standby
+  output_high(LTC6804_CS);
 }
 
 /*!**********************************************************

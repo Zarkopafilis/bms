@@ -178,9 +178,6 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 #define DCP_DISABLED 0
 #define DCP_ENABLED 1
 
-
-
-
 void LTC6804_initialize();
 
 void set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG);
@@ -208,8 +205,10 @@ void LTC6804_wrcfg(uint8_t nIC,uint8_t config[][6]);
 int8_t LTC6804_rdcfg(uint8_t nIC, uint8_t r_config[][8]);
 
 void wakeup_idle();
-
 void wakeup_sleep();
+
+void actual_wakeup_idle();
+void actual_wakeup_sleep();
 
 uint16_t pec15_calc(uint8_t len, uint8_t *data);
 

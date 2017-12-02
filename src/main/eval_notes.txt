@@ -1,5 +1,6 @@
 Hardware Config:
 Clock Polarity (Idle LOW/HIGH): SPI_MODE & Proper Jumper cfg
+* IDLE HIGH Slave Select
 
 Software Outline:
 
@@ -31,3 +32,11 @@ Best case (27KHz) : 1.1ms
 
 * Overlap cell measurement (use 2 ADCs for same cell) (ADOL) ?
 * Open wire check (ADOW) - startup only ?
+
+- Slower transmission ratio on isoSPI <=> more noise immunity
+
+------------------------------
+
+Teensy SPI Clock Divider in order not to fuck up results?
+Discharge Permitted?
+2nd VRef?
