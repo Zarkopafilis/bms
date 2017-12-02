@@ -19,7 +19,6 @@ void generate_crc15_table()
 		remainder =  i<< 7;
 		for (int bit = 8; bit > 0; --bit)
   		  {
-     		
      			 if ((remainder & 0x4000) > 0)//equivalent to remainder & 2^14 simply check for MSB
     			  {
         				remainder = ((remainder << 1)) ;
@@ -30,9 +29,7 @@ void generate_crc15_table()
        				 remainder = ((remainder << 1));
       			}
    		 }
-	
 		crc15Table[i] = remainder&0xFFFF;
-	
 	}
 }*/
 

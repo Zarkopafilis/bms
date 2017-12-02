@@ -1,0 +1,33 @@
+Hardware Config:
+Clock Polarity (Idle LOW/HIGH): SPI_MODE & Proper Jumper cfg
+
+Software Outline:
+
+- Check if everything is connected and is able to communicate properly (RDCFG)
+- Broadcast new (write) configuration (WRCFG) (REFON=1 -> always awake)
+- Demo measurements + clear broadcast + check if everything is stuck (measure + CLRCELL broadcast + measure and compare bits)
+
+- Perform 1 measurement and ignore it ?
+
+- Start performing measurements (0xFF are bad)
+
+- Measure transmit speed on each measurement loop. If full measurement cycle performed at sub 100ms, send some CAN data to the ECU ?
+
+#Misc:
+
+Tests:
+Do you need ADC Start every time before performing new measurements - yes?
+Benchmark ADC Start -> End of ADC Poll time
+Benchmark full register read over i2c - volts + status reg // use only status registers?
+
+Notes:
+Worse case (26Hz) ADC Conversion time (for all cells) : 201ms
+Best case (27KHz) : 1.1ms
+(based on specs)
+
+* Use VUV + VOV instead of measuring voltages (RDSTATx + Look at CxOV and CxUV on tables)
+
+*** The LTC6811-2 uses pins 45 through 48 to set the address of the device, by tying these pins to V– or VREG (A3-A0 ~ top right)
+
+* Overlap cell measurement (use 2 ADCs for same cell) (ADOL) ?
+* Open wire check (ADOW) - startup only ?
