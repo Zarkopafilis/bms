@@ -1,7 +1,22 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <stdint.h>
+
 #define DEBUG 1
+
+//This is the configuration that will be written to every slave
+//REFON=1 -> Always awake
+//VUV (Undervoltage) & VOV (Overvoltage) Values
+const uint8_t slave_cfg[6] = 
+{
+ 0B11111100, //GPIO 1~5 REFON DTEN ADCOPT
+ 0B00000101, //VUV[7~0]
+ 0xFF, //VOV[3~0] VOV[11~8]
+ 0xFF, //VOV[11~4]
+ 0xFF, //DCC 8~1
+ 0xFF //DCTO[3~0] DCC 12~9
+};
 
 //Number of LTC6811-2 Multicell battery monitors
 #define SLAVE_NUM 1

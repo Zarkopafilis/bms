@@ -26,7 +26,7 @@ Worse case (26Hz) ADC Conversion time (for all cells) : 201ms
 Best case (27KHz) : 1.1ms
 (based on specs)
 
-* Use VUV + VOV instead of measuring voltages (RDSTATx + Look at CxOV and CxUV on tables)
+(yes) Use VUV + VOV instead of measuring voltages (RDSTATx + Look at CxOV and CxUV on tables)
 
 *** The LTC6811-2 uses pins 45 through 48 to set the address of the device, by tying these pins to V– or VREG (A3-A0 ~ top right)
 

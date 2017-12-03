@@ -5,18 +5,6 @@
 #include "LTC68042.h"
 #include "framework.h"
 
-//REFON=1 -> Always awake
-//VUV (Undervoltage) & VOV (Overvoltage) Values
-const uint8_t slave_cfg[6] = 
-{
- 0B11111100, //GPIO 1~5 REFON DTEN ADCOPT
- 0B00000101, //VUV[7~0]
- 0xFF, //VOV[3~0] VOV[11~8]
- 0xFF, //VOV[11~4]
- 0xFF, //DCC 8~1
- 0xFF //DCTO[3~0] DCC 12~9
-};
-
 int8_t pec = 0;
 
 void shut_car_down();
