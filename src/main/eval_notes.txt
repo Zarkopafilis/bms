@@ -40,3 +40,8 @@ Best case (27KHz) : 1.1ms
 Teensy SPI Clock Divider in order not to fuck up results?
 Discharge Permitted?
 2nd VRef?
+Pull Up or Down for Open Wire checks?
+dISCHARGE tIMER eNABLE?
+Shorting for cells?
+Discharge Time Out Values?
+DO you need to poll ADC status before reading status registers, right after ADCV broadcast?

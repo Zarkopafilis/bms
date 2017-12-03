@@ -168,7 +168,7 @@ void LTC6804_adax()
  @return int8_t, PEC Status:
 	0: No PEC error detected
 	-1: PEC error detected, retry read*/
-uint8_t LTC6804_rdcv(uint8_t reg, uint8_t total_ic, uint16_t cell_codes[][12])
+uint8_t (uint8_t reg, uint8_t total_ic, uint16_t cell_codes[][12])
 {
   const uint8_t NUM_RX_BYT = 8;
   const uint8_t BYT_IN_REG = 6;
@@ -606,7 +606,7 @@ void LTC6804_wrcfg(uint8_t total_ic,uint8_t config[][6])
   }
   
   //4
-  wakeup_idle (); 															 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
+  actual_wakeup_idle(); 															 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //5
    for(int current_ic = 0; current_ic<total_ic; current_ic++)
   {
@@ -662,7 +662,7 @@ int8_t LTC6804_rdcfg(uint8_t total_ic, uint8_t r_config[][8])
   cmd[3] = 0x0A;
  
   //2
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  actual_wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   //3
    for(int current_ic = 0; current_ic<total_ic; current_ic++)
   {
