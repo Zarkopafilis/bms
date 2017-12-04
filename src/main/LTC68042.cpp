@@ -89,7 +89,7 @@ void LTC6804_adcv()
 void LTC6804_adcvax()
 {
   uint8_t cmd[4];
-  uint16_t temp_pec;
+  //uint16_t temp_pec;
 
 //-----If MD or DCP changes the the cmd[] array will change-----
 

@@ -13,10 +13,10 @@ const uint8_t slave_cfg[6] =
 {
  0B11111100, //GPIO 1~5 REFON DTEN ADCOPT
  0B00000101, //VUV[7~0]
- 0xFF, //VOV[3~0] VOV[11~8]
- 0xFF, //VOV[11~4]
- 0xFF, //DCC 8~1
- 0xFF //DCTO[3~0] DCC 12~9
+ 0B01100000, //VOV[3~0] VOV[11~8]
+ 0B00000000, //VOV[11~4]
+ 0B00000000, //DCC 8~1
+ 0B00000000 //DCTO[3~0] DCC 12~9
 };
 
 #define SERIAL_PORT 9600
@@ -47,11 +47,12 @@ const uint8_t slave_cfg[6] =
 //each monitor observing 10 cells, thus the 11th and 12th 
 //are going to be ignored both from the open wire checks and
 //the measurements
-//Set to -1 in order to measure all
+//Set to 12(Max Cells) in order to measure all
 #define CELL_IGNORE_INDEX 10
 
 //Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
 //sensors (or thermistors) are wired in. The monitors have 5 GPIOs
-#define GPIO_IGNORE_INDEX -1
+//Set to 5(Max GPIOs) in order to measure all
+#define GPIO_IGNORE_INDEX 5
 
 #endif //CONFIG_H

@@ -212,9 +212,9 @@ void setup() {
     }
   }
 
-  #ifdef DEBUG
-    Serial.println("Clearing status registers of all the slaves");
-  #endif
+  // #ifdef DEBUG
+  //   Serial.println("Clearing status registers of all the slaves");
+  // #endif
   //Broadcast status clear
   //CLRSTAT Command
   //LTC6804_clrstat();
@@ -255,7 +255,8 @@ void loop() {
 
   uint32_t measure_cycle_start = 0, measure_cycle_end = 0xFFFFFFFF;
 
-  uint8_t ovuv[SLAVE_NUM][12][2];
+  //uint8_t ovuv[SLAVE_NUM][12][2];
+  uint16_t cell_codes[SLAVE_NUM][12];
 
   //Setup has been completed, so we are ready to start making some measurements
   while(1){
@@ -280,47 +281,82 @@ void loop() {
     }
     measure_cycle_start = millis();
 
-    //Transmit Analog-Digital Conversion Start Broadcast
-    //ADCV Command
-    LTC6804_adcv();
-    
-    //Poll each slave 1 by 1 ?
+    //Transmit Analog-Digital Conversion Start Broadcast to measure BOTH cells and GPIOs
+    //ADCVAX Command
+    LTC6804_adcvax();
 
-    //Then, start reading results of status registers
-    //In order to check undervoltage and overvoltage of each cell
-    pec = LTC68042_ovuv(SLAVE_NUM, ovuv);
+      //FOR TESTING
 
-    if(pec == -1){
+  #ifdef DEBUG
+      Serial.println("Reading all cell values inside loop");
+    #endif
+    //Start reading everything
+    pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
+
+    if(pec == 0){
       #ifdef DEBUG
-        Serial.println("Slaves sent back incorrect PEC while reading OVUV flags");
+        Serial.println("Slaves sent back correct response to RDCV");
+      #endif
+    }else{
+      #ifdef DEBUG
+        Serial.println("Slaves sent back incorrect response to RDCV!");
       #endif
       shut_car_down();
     }
 
     for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
       for(uint8_t cell = 0; cell < CELL_IGNORE_INDEX; cell++){
-        if(ovuv[addr][cell][0] == 1){
-          #ifdef DEBUG
-            Serial.print("Slave #");
-            Serial.print(addr);
-            Serial.print("'s cell #");
-            Serial.print(cell);
-            Serial.println(" OV flag is high!");
-          #endif
-          shut_car_down();
-        }
-        if(ovuv[addr][cell][1] == 1){
-          #ifdef DEBUG
-            Serial.print("Slave #");
-            Serial.print(addr);
-            Serial.print("'s cell #");
-            Serial.print(cell);
-            Serial.println(" UV flag is high!");
-          #endif
-          shut_car_down();
-        }
+            #ifdef DEBUG
+              Serial.print("Slave #");
+              Serial.print(addr);
+              Serial.print("'s cell #");
+              Serial.print(cell);
+              Serial.print(" -> ");
+              Serial.print(cell_codes[addr][cell]);
+              Serial.println(" V");
+            #endif
       }
     }
+  //END FOR TESTING
+    
+    //Poll each slave 1 by 1 ?
+
+    //Then, start reading results of status registers
+    //In order to check undervoltage and overvoltage of each cell
+    //--------------
+    // pec = LTC68042_ovuv(SLAVE_NUM, ovuv);
+
+    // if(pec == -1){
+    //   #ifdef DEBUG
+    //     Serial.println("Slaves sent back incorrect PEC while reading OVUV flags");
+    //   #endif
+    //   shut_car_down();
+    // }
+
+    // for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
+    //   for(uint8_t cell = 0; cell < CELL_IGNORE_INDEX; cell++){
+    //     if(ovuv[addr][cell][0] == 1){
+    //       #ifdef DEBUG
+    //         Serial.print("Slave #");
+    //         Serial.print(addr);
+    //         Serial.print("'s cell #");
+    //         Serial.print(cell);
+    //         Serial.println(" OV flag is high!");
+    //       #endif
+    //       shut_car_down();
+    //     }
+    //     if(ovuv[addr][cell][1] == 1){
+    //       #ifdef DEBUG
+    //         Serial.print("Slave #");
+    //         Serial.print(addr);
+    //         Serial.print("'s cell #");
+    //         Serial.print(cell);
+    //         Serial.println(" UV flag is high!");
+    //       #endif
+    //       shut_car_down();
+    //     }
+    //   }
+    // }
 
     measure_cycle_end = millis();
   }

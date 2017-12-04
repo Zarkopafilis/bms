@@ -43,5 +43,5 @@ Discharge Permitted (yes - keep off for now)
 Pull Up or Down for Open Wire checks ?
 Discharge Timer Enable (discharge off for now)
 Shorting for cells ? (no?)
-Discharge Time Out Values (discharge off for now)
+Discharge Time Out Values (discharge off for now) (DTO) & (DCC - Cell Discharge)
 DO you need to poll ADC status before reading status registers, right after ADCV broadcast?
