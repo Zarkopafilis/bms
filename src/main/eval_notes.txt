@@ -1,6 +1,5 @@
 Hardware Config:
-Clock Polarity (Idle LOW/HIGH): SPI_MODE & Proper Jumper cfg
-* IDLE HIGH Slave Select
+SPI Mode 3
 
 Software Outline:
 
@@ -8,18 +7,20 @@ Software Outline:
 - Broadcast new (write) configuration (WRCFG) (REFON=1 -> always awake)
 - Demo measurements + clear broadcast + check if everything is stuck (measure + CLRCELL broadcast + measure and compare bits)
 
-- Perform 1 measurement and ignore it ?
-
 - Start performing measurements (0xFF are bad)
 
-- Measure transmit speed on each measurement loop. If full measurement cycle performed at sub 100ms, send some CAN data to the ECU ?
+- Precharge Circuit (later)
+
+- Measure transmit speed on each measurement loop. If full measurement cycle performed at sub 100ms, send some CAN data to the ECU (later)
+
+- Reset configuration from data read from CAN - on startup (later)
 
 #Misc:
 
 Tests:
-Do you need ADC Start every time before performing new measurements - yes?
+Do you need ADC Start every time before performing new measurements - (yes)
 Benchmark ADC Start -> End of ADC Poll time
-Benchmark full register read over i2c - volts + status reg // use only status registers?
+Benchmark full register read over i2c - volts + status reg (yes) use only status registers?
 
 Notes:
 Worse case (26Hz) ADC Conversion time (for all cells) : 201ms
@@ -30,17 +31,17 @@ Best case (27KHz) : 1.1ms - (based on specs)
 (info) The LTC6811-2 uses pins 45 through 48 to set the address of the device, by tying these pins to V– or VREG (A3-A0 ~ top right)
 
 * Overlap cell measurement (use 2 ADCs for same cell) (ADOL) ?
-* Open wire check (ADOW) - startup only ?
+* Open wire check (ADOW) - startup only (probably - time consuming)
 
-- Slower transmission ratio on isoSPI <=> more noise immunity
+(info) Slower transmission ratio on isoSPI <=> more noise immunity
 
 ---------------------------------------------------------------
 
-Teensy SPI Clock Divider in order not to fuck up results?
-Discharge Permitted?
-2nd VRef?
-Pull Up or Down for Open Wire checks?
-dISCHARGE tIMER eNABLE?
-Shorting for cells?
-Discharge Time Out Values?
+Teensy SPI Clock Divider in order not to fuck up results - 16
+Discharge Permitted (yes - keep off for now)
+2nd VRef (yes - it's output 3V actually)
+Pull Up or Down for Open Wire checks ?
+Discharge Timer Enable (discharge off for now)
+Shorting for cells ? (no?)
+Discharge Time Out Values (discharge off for now)
 DO you need to poll ADC status before reading status registers, right after ADCV broadcast?

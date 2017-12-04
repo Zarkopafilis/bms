@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <stdint.h>
+#include <SPI.h>
 
 #define DEBUG 1
 
@@ -18,6 +19,12 @@ const uint8_t slave_cfg[6] =
  0xFF //DCTO[3~0] DCC 12~9
 };
 
+#define SPI_MODE SPI_MODE3
+#define SPI_CLOCK_DIV SPI_CLOCK_DIV16
+
+//Cell discharge permitted
+#define DCP_MODE DCP_DISABLED
+
 //Number of LTC6811-2 Multicell battery monitors
 #define SLAVE_NUM 1
 
@@ -25,7 +32,7 @@ const uint8_t slave_cfg[6] =
 #define VUV 2
 #define VOV 5
 
-//Temperature (in Celsius) for Undertemping and Overtemping
+//Temperature Voltage Read for Undertemping and Overtemping
 #define TUT -10
 #define TOT 100
 

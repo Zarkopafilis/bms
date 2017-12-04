@@ -9,6 +9,7 @@ the hardware SPI port.
 #include <stdint.h>
 #include <SPI.h>
 #include "LT_SPI.h"
+#include "config.h"
 
 // Reads and sends a byte
 // Return 0 if successful, 1 if failed
@@ -72,7 +73,7 @@ void spi_enable(uint8_t spi_clock_divider) // Configures SCK frequency. Use cons
   pinMode(QUIKEVAL_CS, OUTPUT);     //! 3) Setup CS as output
   SPI.begin();
   SPI.setClockDivider(spi_clock_divider);
-  //SPI.setDataMode(SPI_MODE3);
+  SPI.setDataMode(SPI_MODE);
 }
 
 //Disable the SPI hardware port

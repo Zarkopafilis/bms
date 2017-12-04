@@ -4,6 +4,7 @@
 #include "LT_SPI.h"
 #include "LTC68042.h"
 #include <SPI.h>
+#include "config.h"
 
 /*ADC control Variables for LTC6804*/
 /*6804 conversion command variables.  */
@@ -14,12 +15,12 @@ uint8_t ADAX[2]; //!< GPIO conversion command.
 Input: IC: number of ICs being controlled. The address of the ICs in a LTC6804-2 network will start at 0 and continue in an ascending order.*/
 void LTC6804_initialize()
 {
-  spi_enable(SPI_CLOCK_DIV16);
+  spi_enable(SPI_CLOCK_DIV);
 
   //Fastest conversion mode
   //Disabled Discharge
   //AUX_CH_ALL measures all 5 GPIOs and 2nd Vref 
-  set_adc(MD_FAST,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
+  set_adc(MD_FAST,DCP_MODE,CELL_CH_ALL,AUX_CH_ALL);
 }
 
 /*Maps  global ADC control variables to the appropriate control bytes for each of the different ADC commands
