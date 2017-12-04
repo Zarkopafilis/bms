@@ -19,6 +19,8 @@ const uint8_t slave_cfg[6] =
  0xFF //DCTO[3~0] DCC 12~9
 };
 
+#define SERIAL_PORT 9600
+
 #define SPI_MODE SPI_MODE3
 #define SPI_CLOCK_DIV SPI_CLOCK_DIV16
 

@@ -169,7 +169,7 @@ void LTC6804_adax()
  @return int8_t, PEC Status:
 	0: No PEC error detected
 	-1: PEC error detected, retry read*/
-uint8_t (uint8_t reg, uint8_t total_ic, uint16_t cell_codes[][12])
+uint8_t LTC6804_rdcv(uint8_t reg, uint8_t total_ic, uint16_t cell_codes[][12])
 {
   const uint8_t NUM_RX_BYT = 8;
   const uint8_t BYT_IN_REG = 6;

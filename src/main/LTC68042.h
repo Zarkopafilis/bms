@@ -143,6 +143,9 @@ int8_t LTC6804_rdcfg(uint8_t nIC, uint8_t r_config[][8]);
 void wakeup_idle();
 void wakeup_sleep();
 
+void actual_wakeup_idle();
+void actual_wakeup_sleep();
+
 uint16_t pec15_calc(uint8_t len, uint8_t *data);
 
 void spi_write_array( uint8_t length, uint8_t *data);

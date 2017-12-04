@@ -4,6 +4,7 @@
 #include "LT_SPI.h"
 #include "LTC68042.h"
 #include "framework.h"
+#include "config.h"
 
 int8_t pec = 0;
 
@@ -12,8 +13,8 @@ void shut_car_down();
 //This is the entry point. loop() is called after
 void setup() {
   #ifdef DEBUG
-    Serial.begin(9600);
-    Serial.println("> Setup initiating...")
+    Serial.begin(SERIAL_PORT);
+    Serial.println("> Setup initiating...");
   #endif
 
   #ifdef DEBUG
@@ -33,7 +34,6 @@ void setup() {
   //RDCFG (Read Configuration) Command
   uint8_t r_cfg[SLAVE_NUM][8];
 
-  actual_wakeup_idle();
   pec = LTC6804_rdcfg(SLAVE_NUM, r_cfg);
 
   if(pec == 0){
@@ -61,7 +61,6 @@ void setup() {
     }
   }
 
-  actual_wakeup_idle();
   LTC6804_wrcfg(SLAVE_NUM, cfg);
 
   #ifdef DEBUG
@@ -158,7 +157,7 @@ void setup() {
   }
 
   for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
-    for(uint8_t cell = 0; cell < CELL_IGNORE_INDEX, cell++){
+    for(uint8_t cell = 0; cell < CELL_IGNORE_INDEX; cell++){
       if(cell_codes[addr][cell] != 0xFFFF){
           #ifdef DEBUG
             Serial.print("Slave #");
@@ -199,7 +198,7 @@ void setup() {
   }
 
   for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
-    for(uint8_t aux = 0; aux < 6, aux++){
+    for(uint8_t aux = 0; aux < 6; aux++){
       if(aux_codes[addr][aux] != 0xFFFF){
         #ifdef DEBUG
           Serial.print("Slave #");
@@ -218,7 +217,7 @@ void setup() {
   #endif
   //Broadcast status clear
   //CLRSTAT Command
-  LTC6804_clrstat();
+  //LTC6804_clrstat();
 
   // #ifdef DEBUG
   //   Serial.println("Making sure no status register bits are stuck");
@@ -267,7 +266,7 @@ void loop() {
       #ifdef DEBUG
         Serial.print("Measure cycle duration: ");
         Serial.print(measure_cycle_duration);
-        Serial.println(" ms")
+        Serial.println(" ms");
       #endif
 
       if(measure_cycle_duration > MAX_MEASURE_CYCLE_DURATION_MS){
