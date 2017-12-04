@@ -9,9 +9,3 @@ Teensys/Arduino Compatible boards and isoSPI implementations from Linear
 - Clone this repo
 - Read everything under /spec
 - Read the README.md files
-
-# Maintainers
-- Theodoros 'Zarkopafilis' Ntakouris - zarkopafilis@gmail.com - +306989290272
-- Kyriakos Chornos
-
-(UoP Racing)[www.uopracing.com]

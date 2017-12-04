@@ -23,19 +23,18 @@ Benchmark full register read over i2c - volts + status reg // use only status re
 
 Notes:
 Worse case (26Hz) ADC Conversion time (for all cells) : 201ms
-Best case (27KHz) : 1.1ms
-(based on specs)
+Best case (27KHz) : 1.1ms - (based on specs)
 
 (yes) Use VUV + VOV instead of measuring voltages (RDSTATx + Look at CxOV and CxUV on tables)
 
-*** The LTC6811-2 uses pins 45 through 48 to set the address of the device, by tying these pins to V– or VREG (A3-A0 ~ top right)
+(info) The LTC6811-2 uses pins 45 through 48 to set the address of the device, by tying these pins to V– or VREG (A3-A0 ~ top right)
 
 * Overlap cell measurement (use 2 ADCs for same cell) (ADOL) ?
 * Open wire check (ADOW) - startup only ?
 
 - Slower transmission ratio on isoSPI <=> more noise immunity
 
-------------------------------
+---------------------------------------------------------------
 
 Teensy SPI Clock Divider in order not to fuck up results?
 Discharge Permitted?
