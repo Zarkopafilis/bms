@@ -793,7 +793,6 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
   for(uint8_t i = 0; i < tx_len; i++)
   {
     spi_write(tx_Data[i]);
-
   }
 
   for(uint8_t i = 0; i < rx_len; i++)

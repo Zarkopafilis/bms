@@ -12,18 +12,21 @@ void shut_car_down();
 
 //This is the entry point. loop() is called after
 void setup() {
-  #ifdef DEBUG
-    Serial.begin(SERIAL_PORT);
+
+  #if DEBUG
+    Serial.begin(9600);
+    delay(2000);
     Serial.println("> Setup initiating...");
   #endif
+    Serial.println("Setup return");
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Initializing LTC6804 communication via SPI");
   #endif
   //Initialize communication with attached LTC via SPI
   LTC6804_initialize();
   
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Checking if every slave is connected and able to communicate properly");
   #endif
 
@@ -37,17 +40,17 @@ void setup() {
   pec = LTC6804_rdcfg(SLAVE_NUM, r_cfg);
 
   if(pec == 0){
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.println("All slaves are connected");
     #endif
   }else{
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.print("Slaves may be connected but PEC is wrong!");
     #endif
     shut_car_down();
   }
   
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Writing configuration to slaves");
   #endif
 
@@ -63,7 +66,7 @@ void setup() {
 
   LTC6804_wrcfg(SLAVE_NUM, cfg);
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Evaluating wether configuration was indeed changed");
   #endif
 
@@ -72,11 +75,11 @@ void setup() {
   pec = LTC6804_rdcfg(SLAVE_NUM, r_cfg);
 
   if(pec == 0){
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.println("Slaves sent correct configuration back");
     #endif
   }else{
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.print("Slaves failed to send correct configuration back!");
     #endif
     shut_car_down();
@@ -87,18 +90,18 @@ void setup() {
 
     //No need to check the 2 PEC bytes again
     for (uint8_t i = 0; i < 6; i++){
-      uint8_t byte = r_cfg[addr][i];
-      check &= (byte == slave_cfg[i]);
+      uint8_t b = r_cfg[addr][i];
+      check &= (b == slave_cfg[i]);
     }
 
-    if(check == 0xFF){
-      #ifdef DEBUG
+    if(check == 1){
+      #if DEBUG
         Serial.print("Slave ");
         Serial.print(addr);
         Serial.println(" got properly configured");
       #endif
     }else{
-      #ifdef DEBUG
+      #if DEBUG
         Serial.print("Slave ");
         Serial.print(addr);
         Serial.println(" was not properly configured!");
@@ -107,38 +110,38 @@ void setup() {
     }
   }
 
-  #ifdef DEBUG
-    Serial.println("Performing Open Wire Check");
-  #endif
+//  #if DEBUG
+//    Serial.println("Performing Open Wire Check");
+//  #endif
   //Open Wire Check
   //ADOW Command
   // pec = LTC6804_adow(SLAVE_NUM, CELL_IGNORE_INDEX);
 
   // if(pec == 0){
-  //   #ifdef DEBUG
+  //   #if DEBUG
   //     Serial.println("All slave wires are properly connected");
   //   #endif
   // }else{
-  //   #ifdef DEBUG
+  //   #if DEBUG
   //     Serial.println("Some wires are not connected to the Battery Monitor!");
   //   #endif
   //   shut_car_down();
   // }
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Clearing cell registers of all the slaves");
   #endif 
   //Broadcast cell clear
   //CLRCELL Command
   LTC6804_clrcell();
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Making sure no cell register bits are stuck");
   #endif
   //Check if every cell is 0xFF in order to determine
   //Wether any possible bits are stuck
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Reading all cell values and comparing with 0xFF");
   #endif
   //Start reading everything
@@ -146,20 +149,20 @@ void setup() {
   pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
 
   if(pec == 0){
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.println("Slaves sent back correct response to RDCV");
     #endif
   }else{
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to RDCV!");
     #endif
     shut_car_down();
   }
 
   for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
-    for(uint8_t cell = 0; cell < CELL_IGNORE_INDEX; cell++){
+    for(uint8_t cell = CELL_IGNORE_INDEX_START; cell < CELL_IGNORE_INDEX_END; cell++){
       if(cell_codes[addr][cell] != 0xFFFF){
-          #ifdef DEBUG
+          #if DEBUG
             Serial.print("Slave #");
             Serial.print(addr);
             Serial.print("'s cell #");
@@ -171,14 +174,14 @@ void setup() {
     }
   }
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Clearing auxiliary registers of all the slaves");
   #endif
   //Broadcast auxiliary clear
   //CLRAUX Command
   LTC6804_clraux();
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Making sure no auxiliary register bits are stuck");
   #endif
   //Check if every auxiliary register is 0xFF in order to determine
@@ -187,11 +190,11 @@ void setup() {
   pec = LTC6804_rdaux(AUX_CH_ALL, SLAVE_NUM, aux_codes);
 
   if(pec == 0){
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.println("Slaves sent back correct response to RDAUX");
     #endif
   }else{
-    #ifdef DEBUG
+    #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to RDAUX!");
     #endif
     shut_car_down();
@@ -200,7 +203,7 @@ void setup() {
   for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
     for(uint8_t aux = 0; aux < 6; aux++){
       if(aux_codes[addr][aux] != 0xFFFF){
-        #ifdef DEBUG
+        #if DEBUG
           Serial.print("Slave #");
           Serial.print(addr);
           Serial.print("'s aux register #");
@@ -212,14 +215,14 @@ void setup() {
     }
   }
 
-  // #ifdef DEBUG
+  // #if DEBUG
   //   Serial.println("Clearing status registers of all the slaves");
   // #endif
   //Broadcast status clear
   //CLRSTAT Command
   //LTC6804_clrstat();
 
-  // #ifdef DEBUG
+  // #if DEBUG
   //   Serial.println("Making sure no status register bits are stuck");
   // #endif
   // //Check if every status register is 0xFF in order to determine
@@ -228,50 +231,63 @@ void setup() {
   // pec = LTC6804_rdstat(STAT_CH_ALL, SLAVE_NUM, stat_codes);
 
   // if(pec == 0){
-  //   #ifdef DEBUG
+  //   #if DEBUG
   //     Serial.println("Slaves sent back correct response to RDSTAT");
   //   #endif
   // }else{
-  //   #ifdef DEBUG
+  //   #if DEBUG
   //     Serial.println("Slaves sent back incorrect response to RDSTAT!");
   //   #endif
   //   shut_car_down();
   // }
 
-  // #ifdef DEBUG
+  // #if DEBUG
   //   Serial.println("Slowly reading cell values of everything after 2 ADC passes to make sure battery is ok");
   // #endif  
 
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("> Setup Complete!");
   #endif
 }
 
 //Runs repeatedly after setup()
 void loop() {
-  #ifdef DEBUG
+  #if DEBUG
     Serial.println("Running loop()");
   #endif
 
-  uint32_t measure_cycle_start = 0, measure_cycle_end = 0xFFFFFFFF;
+  uint32_t measure_cycle_start = 0, measure_cycle_end = 0xFFFFFFFF, measure_cycle_mean = 0;
 
-  //uint8_t ovuv[SLAVE_NUM][12][2];
   uint16_t cell_codes[SLAVE_NUM][12];
 
   //Setup has been completed, so we are ready to start making some measurements
   while(1){
+    
     if(measure_cycle_start == 0 && measure_cycle_end == 0xFFFFFFFF){
       //Ignore this one, because it's the first time this loop runs
     }else{
       uint32_t measure_cycle_duration = measure_cycle_end - measure_cycle_start;
-      #ifdef DEBUG
+
+      if(measure_cycle_mean == 0){
+        measure_cycle_mean = measure_cycle_duration;
+      }else{
+        measure_cycle_mean = (measure_cycle_mean + measure_cycle_duration) / 2;
+      }
+
+      #if DEBUG
+        Serial.print("Measure cycle mean: ");
+        Serial.print(measure_cycle_mean);
+        Serial.println(" ms");
+      #endif
+      
+      #if DEBUG
         Serial.print("Measure cycle duration: ");
         Serial.print(measure_cycle_duration);
         Serial.println(" ms");
       #endif
 
       if(measure_cycle_duration > MAX_MEASURE_CYCLE_DURATION_MS){
-          #ifdef DEBUG
+          #if DEBUG
             Serial.print("> Measure cycle duration > ");
             Serial.print(MAX_MEASURE_CYCLE_DURATION_MS);
             Serial.println(" ms. Shutting car down!");
@@ -281,32 +297,28 @@ void loop() {
     }
     measure_cycle_start = millis();
 
+    for(uint8_t times = 0; times < 10; times++){
     //Transmit Analog-Digital Conversion Start Broadcast to measure BOTH cells and GPIOs
     //ADCVAX Command
     LTC6804_adcvax();
-
-      //FOR TESTING
-
-  #ifdef DEBUG
-      Serial.println("Reading all cell values inside loop");
-    #endif
+    //FOR TESTING
     //Start reading everything
     pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
 
     if(pec == 0){
-      #ifdef DEBUG
+      #if DEBUG_PEC
         Serial.println("Slaves sent back correct response to RDCV");
       #endif
     }else{
-      #ifdef DEBUG
+      #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to RDCV!");
       #endif
       shut_car_down();
     }
 
     for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
-      for(uint8_t cell = 0; cell < CELL_IGNORE_INDEX; cell++){
-            #ifdef DEBUG
+      for(uint8_t cell = CELL_IGNORE_INDEX_START; cell < CELL_IGNORE_INDEX_END; cell++){
+            #if DEBUG_CELL_VALUES
               Serial.print("Slave #");
               Serial.print(addr);
               Serial.print("'s cell #");
@@ -317,53 +329,14 @@ void loop() {
             #endif
       }
     }
-  //END FOR TESTING
-    
-    //Poll each slave 1 by 1 ?
-
-    //Then, start reading results of status registers
-    //In order to check undervoltage and overvoltage of each cell
-    //--------------
-    // pec = LTC68042_ovuv(SLAVE_NUM, ovuv);
-
-    // if(pec == -1){
-    //   #ifdef DEBUG
-    //     Serial.println("Slaves sent back incorrect PEC while reading OVUV flags");
-    //   #endif
-    //   shut_car_down();
-    // }
-
-    // for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
-    //   for(uint8_t cell = 0; cell < CELL_IGNORE_INDEX; cell++){
-    //     if(ovuv[addr][cell][0] == 1){
-    //       #ifdef DEBUG
-    //         Serial.print("Slave #");
-    //         Serial.print(addr);
-    //         Serial.print("'s cell #");
-    //         Serial.print(cell);
-    //         Serial.println(" OV flag is high!");
-    //       #endif
-    //       shut_car_down();
-    //     }
-    //     if(ovuv[addr][cell][1] == 1){
-    //       #ifdef DEBUG
-    //         Serial.print("Slave #");
-    //         Serial.print(addr);
-    //         Serial.print("'s cell #");
-    //         Serial.print(cell);
-    //         Serial.println(" UV flag is high!");
-    //       #endif
-    //       shut_car_down();
-    //     }
-    //   }
-    // }
-
+  }
     measure_cycle_end = millis();
   }
 }
 
 void shut_car_down(){
-  #ifdef DEBUG
+  return;
+  #if DEBUG
     Serial.println(">>>> SHUTTING CAR DOWN <<<<");
   #endif
 

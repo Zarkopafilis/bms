@@ -5,6 +5,9 @@
 #include <SPI.h>
 
 #define DEBUG 1
+#define DEBUG_PEC 1
+#define DEBUG_CELL_VALUES 0
+
 
 //This is the configuration that will be written to every slave
 //REFON=1 -> Always awake
@@ -48,7 +51,9 @@ const uint8_t slave_cfg[6] =
 //are going to be ignored both from the open wire checks and
 //the measurements
 //Set to 12(Max Cells) in order to measure all
-#define CELL_IGNORE_INDEX 10
+#define CELL_IGNORE_INDEX_START 2
+#define CELL_IGNORE_INDEX_END 12
+
 
 //Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
 //sensors (or thermistors) are wired in. The monitors have 5 GPIOs
