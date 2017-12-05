@@ -12,7 +12,6 @@ void shut_car_down();
 
 //This is the entry point. loop() is called after
 void setup() {
-
   #if DEBUG
     Serial.begin(9600);
     delay(2000);
@@ -29,9 +28,6 @@ void setup() {
   #if DEBUG
     Serial.println("Checking if every slave is connected and able to communicate properly");
   #endif
-
-  //Till we write the configuration we need to tell the battery monitor
-  //To wake up before each command
 
   //Check if every slave is connected and is able to communicate properly
   //RDCFG (Read Configuration) Command
@@ -109,24 +105,6 @@ void setup() {
       shut_car_down();
     }
   }
-
-//  #if DEBUG
-//    Serial.println("Performing Open Wire Check");
-//  #endif
-  //Open Wire Check
-  //ADOW Command
-  // pec = LTC6804_adow(SLAVE_NUM, CELL_IGNORE_INDEX);
-
-  // if(pec == 0){
-  //   #if DEBUG
-  //     Serial.println("All slave wires are properly connected");
-  //   #endif
-  // }else{
-  //   #if DEBUG
-  //     Serial.println("Some wires are not connected to the Battery Monitor!");
-  //   #endif
-  //   shut_car_down();
-  // }
 
   #if DEBUG
     Serial.println("Clearing cell registers of all the slaves");
@@ -215,36 +193,6 @@ void setup() {
     }
   }
 
-  // #if DEBUG
-  //   Serial.println("Clearing status registers of all the slaves");
-  // #endif
-  //Broadcast status clear
-  //CLRSTAT Command
-  //LTC6804_clrstat();
-
-  // #if DEBUG
-  //   Serial.println("Making sure no status register bits are stuck");
-  // #endif
-  // //Check if every status register is 0xFF in order to determine
-  // //Wether any possible bits are stuck
-  // uint16_t stat_codes[SLAVE_NUM][6];
-  // pec = LTC6804_rdstat(STAT_CH_ALL, SLAVE_NUM, stat_codes);
-
-  // if(pec == 0){
-  //   #if DEBUG
-  //     Serial.println("Slaves sent back correct response to RDSTAT");
-  //   #endif
-  // }else{
-  //   #if DEBUG
-  //     Serial.println("Slaves sent back incorrect response to RDSTAT!");
-  //   #endif
-  //   shut_car_down();
-  // }
-
-  // #if DEBUG
-  //   Serial.println("Slowly reading cell values of everything after 2 ADC passes to make sure battery is ok");
-  // #endif  
-
   #if DEBUG
     Serial.println("> Setup Complete!");
   #endif
@@ -259,6 +207,7 @@ void loop() {
   uint32_t measure_cycle_start = 0, measure_cycle_end = 0xFFFFFFFF, measure_cycle_mean = 0;
 
   uint16_t cell_codes[SLAVE_NUM][12];
+  uint16_t aux_codes[SLAVE_NUM][6];
 
   //Setup has been completed, so we are ready to start making some measurements
   while(1){
@@ -297,7 +246,6 @@ void loop() {
     }
     measure_cycle_start = millis();
 
-    for(uint8_t times = 0; times < 10; times++){
     //Transmit Analog-Digital Conversion Start Broadcast to measure BOTH cells and GPIOs
     //ADCVAX Command
     LTC6804_adcvax();
@@ -329,7 +277,36 @@ void loop() {
             #endif
       }
     }
-  }
+
+    //Read GPIO Volts (Temperature values here)
+    //RDAUX Command (GPIO Measurements are stored in auxiliary registers)
+    pec = LTC6804_rdaux(AUX_CH_ALL, SLAVE_NUM, aux_codes);
+
+    if(pec == 0){
+      #if DEBUG_PEC
+        Serial.println("Slaves sent back correct response to RDAUX");
+      #endif
+    }else{
+      #if DEBUG_PEC
+        Serial.println("Slaves sent back incorrect response to RDAUX!");
+      #endif
+      shut_car_down();
+    }
+
+    for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
+      for(uint8_t temp = GPIO_IGNORE_INDEX_START; temp < GPIO_IGNORE_INDEX_END; temp++){
+            #if DEBUG_CELL_VALUES
+              Serial.print("Slave #");
+              Serial.print(addr);
+              Serial.print("'s GPIO #");
+              Serial.print(temp);
+              Serial.print(" -> ");
+              Serial.print(aux_codes[addr][temp]);
+              Serial.println(" V");
+            #endif
+      }
+    }
+  
     measure_cycle_end = millis();
   }
 }

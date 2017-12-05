@@ -6,7 +6,9 @@
 
 #define DEBUG 1
 #define DEBUG_PEC 1
-#define DEBUG_CELL_VALUES 0
+#define DEBUG_CELL_VALUES 1
+#define DEBUG_TEMP_VALUES 1
+
 
 
 //This is the configuration that will be written to every slave
@@ -58,6 +60,7 @@ const uint8_t slave_cfg[6] =
 //Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
 //sensors (or thermistors) are wired in. The monitors have 5 GPIOs
 //Set to 5(Max GPIOs) in order to measure all
-#define GPIO_IGNORE_INDEX 5
+#define GPIO_IGNORE_INDEX_START 0
+#define GPIO_IGNORE_INDEX_END 5
 
 #endif //CONFIG_H
