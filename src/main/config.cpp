@@ -1,6 +1,34 @@
 #include "config.h"
 #include <EEPROM.h>
 
+uint8_t slave_cfg[6] = 
+{
+ 0B11111100, //GPIO 1~5 REFON DTEN ADCOPT
+ 0B00000101, //VUV[7~0]
+ 0B01100000, //VOV[3~0] VOV[11~8]
+ 0B00000000, //VOV[11~4]
+ 0B00000000, //DCC 8~1
+ 0B00000000 //DCTO[3~0] DCC 12~9
+};
+
+uint8_t DCP_MODE = DCP_DISABLED;
+
+uint8_t SLAVE_NUM = 1;
+
+uint16_t MAX_MEASURE_CYCLE_DURATION_MS = 500;
+
+uint8_t CELL_IGNORE_INDEX_START = 2;
+uint8_t CELL_IGNORE_INDEX_END = 12;
+
+uint8_t GPIO_IGNORE_INDEX_START = 0;
+uint8_t GPIO_IGNORE_INDEX_END = 5;
+
+uint16_t TUT = 5;
+uint16_t TOT = 100;
+
+uint16_t VUV = 2;
+uint16_t VOV = 5;
+
 void config_load(){
     byte flag = EEPROM.read(FLAG_ADDR);
     if(flag == CORRECT_FLAG){

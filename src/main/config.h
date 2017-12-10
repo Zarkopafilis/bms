@@ -18,24 +18,16 @@
 //This is the configuration that will be written to every slave
 //REFON=1 -> Always awake
 //VUV (Undervoltage) & VOV (Overvoltage) Values
-uint8_t slave_cfg[6] = 
-{
- 0B11111100, //GPIO 1~5 REFON DTEN ADCOPT
- 0B00000101, //VUV[7~0]
- 0B01100000, //VOV[3~0] VOV[11~8]
- 0B00000000, //VOV[11~4]
- 0B00000000, //DCC 8~1
- 0B00000000 //DCTO[3~0] DCC 12~9
-};
+extern uint8_t slave_cfg[6];
 
 //Cell discharge permitted
 //Disabled = 0 | Enabled = 1
-uint8_t DCP_MODE = DCP_DISABLED;
+extern uint8_t DCP_MODE;
 
 //Number of LTC6811-2 Multicell battery monitors
-uint8_t SLAVE_NUM = 1;
+extern uint8_t SLAVE_NUM;
 
-uint16_t MAX_MEASURE_CYCLE_DURATION_MS = 500;
+extern uint16_t MAX_MEASURE_CYCLE_DURATION_MS;
 
 //Cells with index > CELL_IGNORE_INDEX will be ignored from measurements.
 //This is useful for cases where your cells on a module 
@@ -45,22 +37,22 @@ uint16_t MAX_MEASURE_CYCLE_DURATION_MS = 500;
 //are going to be ignored both from the open wire checks and
 //the measurements
 //Set to 12(Max Cells) in order to measure all
-uint8_t CELL_IGNORE_INDEX_START = 2;
-uint8_t CELL_IGNORE_INDEX_END = 12;
+extern uint8_t CELL_IGNORE_INDEX_START;
+extern uint8_t CELL_IGNORE_INDEX_END;
 
 //Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
 //sensors (or thermistors) are wired in. The monitors have 5 GPIOs
 //Set to 5(Max GPIOs) in order to measure all
-uint8_t GPIO_IGNORE_INDEX_START = 0;
-uint8_t GPIO_IGNORE_INDEX_END = 5;
+extern uint8_t GPIO_IGNORE_INDEX_START;
+extern uint8_t GPIO_IGNORE_INDEX_END;
 
 //Temperature Voltage Read for Undertemping and Overtemping
-uint16_t TUT = 5;
-uint16_t TOT = 100;
+extern uint16_t TUT;
+extern uint16_t TOT;
 
 //Voltage for Undervolting and Overvolting
-uint16_t VUV = 2;
-uint16_t VOV = 5;
+extern uint16_t VUV;
+extern uint16_t VOV;
 
 //Teensy 3.1 & 3.2 has got 2048 bytes available
 #define FLAG_ADDR 0

@@ -1,10 +1,10 @@
 #include <stdint.h>
 #include <Arduino.h>
+#include "config.h"
 #include <SPI.h>
 #include "LT_SPI.h"
 #include "LTC68042.h"
 #include "framework.h"
-#include "config.h"
 
 int8_t pec = 0;
 
