@@ -10,6 +10,8 @@ int8_t pec = 0;
 
 void shut_car_down();
 
+float volts_to_celsius(float cell, float vref);
+
 //This is the entry point. loop() is called after
 void setup() {
   #if DEBUG
@@ -253,11 +255,7 @@ void loop() {
     //Start reading everything
     pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
 
-    if(pec == 0){
-      #if DEBUG_PEC
-        Serial.println("Slaves sent back correct response to RDCV");
-      #endif
-    }else{
+    if(pec == -1){
       #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to RDCV!");
       #endif
@@ -272,7 +270,7 @@ void loop() {
               Serial.print("'s cell #");
               Serial.print(cell);
               Serial.print(" -> ");
-              Serial.print(cell_codes[addr][cell]);
+              Serial.print(cell_codes[addr][cell]*0.0001,4);
               Serial.println(" V");
             #endif
       }
@@ -282,11 +280,7 @@ void loop() {
     //RDAUX Command (GPIO Measurements are stored in auxiliary registers)
     pec = LTC6804_rdaux(AUX_CH_ALL, SLAVE_NUM, aux_codes);
 
-    if(pec == 0){
-      #if DEBUG_PEC
-        Serial.println("Slaves sent back correct response to RDAUX");
-      #endif
-    }else{
+    if(pec == -1){
       #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to RDAUX!");
       #endif
@@ -294,6 +288,12 @@ void loop() {
     }
 
     for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
+      uint16_t vref = aux_codes[addr][5];
+      #if DEBUG_CELL_VALUES
+        Serial.print("VRef2 -> ");
+        Serial.print(vref*0.0001, 4);
+        Serial.println(" V");
+      #endif
       for(uint8_t temp = GPIO_IGNORE_INDEX_START; temp < GPIO_IGNORE_INDEX_END; temp++){
             #if DEBUG_CELL_VALUES
               Serial.print("Slave #");
@@ -301,7 +301,7 @@ void loop() {
               Serial.print("'s GPIO #");
               Serial.print(temp);
               Serial.print(" -> ");
-              Serial.print(aux_codes[addr][temp]);
+              Serial.print(volts_to_celsius(aux_codes[addr][temp], vref), 4);
               Serial.println(" V");
             #endif
       }
@@ -309,6 +309,25 @@ void loop() {
   
     measure_cycle_end = millis();
   }
+}
+
+float volts_to_celsius(float cell, float vref){
+  float R10=10;
+  float R25=10;
+  float vr,T,r;
+  float Aa=0.003354016 ;
+  float Bb=0.000256985 ;
+  float Cc= 2.62013*0.000001;
+  float Dd=6.38309*0.00000001;
+  float t;
+  
+  vr =cell*0.0001;
+  
+  r=-(vr*R10)/(vr-vref*0.0001);
+  T= Aa + Bb*log(r/R25)+ Cc*log(r/R25)*log(r/R25) +Dd*log(r/R25)*log(r/R25)*log(r/R25);
+
+  t=1/T -272.15;
+  return t;
 }
 
 void shut_car_down(){
