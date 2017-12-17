@@ -14,12 +14,14 @@ float volts_to_celsius(float cell, float vref);
 
 //This is the entry point. loop() is called after
 void setup() {
+  pinMode(SHUTDOWN_PIN, OUTPUT);
+  digitalWrite(SHUTDOWN_PIN, SHUTDOWN_PIN_IDLE);
+
   #if DEBUG
     Serial.begin(9600);
     delay(2000);
     Serial.println("> Setup initiating...");
   #endif
-    Serial.println("Setup return");
 
   #if DEBUG
     Serial.println("Initializing LTC6804 communication via SPI");
@@ -248,11 +250,11 @@ void loop() {
     }
     measure_cycle_start = millis();
 
-    //Transmit Analog-Digital Conversion Start Broadcast to measure BOTH cells and GPIOs
+    //Transmit Analog-Digital Conversion Start Broadcast to measure CELLS
     //ADCVAX Command
-    LTC6804_adcvax();
-    //FOR TESTING
-    //Start reading everything
+    LTC6804_adcv();
+
+    //Start reading everything back
     pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
 
     if(pec == -1){
@@ -275,6 +277,10 @@ void loop() {
             #endif
       }
     }
+
+    //Transmit Analog-Digital Conversion Start Broadcast to measure GPIOs (Auxiliary)
+    //ADAX Command
+    LTC6804_adax();
 
     //Read GPIO Volts (Temperature values here)
     //RDAUX Command (GPIO Measurements are stored in auxiliary registers)
@@ -335,6 +341,8 @@ void shut_car_down(){
   #if DEBUG
     Serial.println(">>>> SHUTTING CAR DOWN <<<<");
   #endif
+
+  digitalWrite(SHUTDOWN_PIN, SHUTDOWN_PIN_IDLE == 1 ? 0 : 1);
 
   while(1){
     //Loop endlessly in chaos

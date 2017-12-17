@@ -74,6 +74,9 @@ extern uint16_t VOV;
 //uint8_t slave_cfg[6] | 6 bytes
 #define SLAVE_CONFIG_ADDR 16
 
+#define SHUTDOWN_PIN 10
+#define SHUTDOWN_PIN_IDLE 1
+
 //Loads config from EEPROM if persist flag is correct
 void config_load();
 
