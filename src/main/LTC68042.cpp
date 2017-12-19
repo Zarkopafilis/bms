@@ -704,9 +704,7 @@ int8_t LTC6804_rdcfg(uint8_t total_ic, uint8_t r_config[][8])
 	5. Return PEC Error */
 
 /*In general, look for wakeup_idle and wakeup_sleep on the prototype library. In our case, the monitoring modules
-are always awake from a hardware configuration due to the high speed needs of FS rules.
-We are not going to remove this function because there might be a need for it in the future.
-It's just not going to do anything for now. */
+are always awake from a hardware configuration due to the high speed needs of FS rules. */
 void wakeup_idle()
 {
   output_low(LTC6804_CS);

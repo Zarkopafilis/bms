@@ -387,14 +387,15 @@ void init_cfg()
   for(int i = 0; i<TOTAL_IC;i++)
   {
     tx_cfg[i][0] = 0xFE;
-    tx_cfg[i][1] = 0x00 ; 
-    tx_cfg[i][2] = 0x00 ;
-    tx_cfg[i][3] = 0x00 ; 
-    tx_cfg[i][4] = 0x00 ;
-    tx_cfg[i][5] = 0x00 ;
+    tx_cfg[i][1] = 0x00; 
+    tx_cfg[i][2] = 0x00;
+    tx_cfg[i][3] = 0x00; 
+    tx_cfg[i][4] = 0x00;
+    tx_cfg[i][5] = 0x00;
   }
 }
 
+//Used only for testing! Normal config is above, at init_cfg()
 void write_tx_cfg()
 {
   for (int i = 0; i<TOTAL_IC; i++)

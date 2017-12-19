@@ -236,19 +236,20 @@ void loop() {
       #endif
 
       if(measure_cycle_duration > MAX_MEASURE_CYCLE_DURATION_MS){
-          #if DEBUG
-            Serial.print("> Measure cycle duration > ");
-            Serial.print(MAX_MEASURE_CYCLE_DURATION_MS);
-            Serial.println(" ms. Shutting car down!");
-          #endif
+        #if DEBUG
+          Serial.print("> Measure cycle duration > ");
+          Serial.print(MAX_MEASURE_CYCLE_DURATION_MS);
+          Serial.println(" ms. Shutting car down!");
+        #endif
         shut_car_down();
       }
     }
     measure_cycle_start = millis();
 
     //Transmit Analog-Digital Conversion Start Broadcast to measure CELLS
-    //ADCVAX Command
+    //ADCV Command
     LTC6804_adcv();
+    delay(3)
 
     //Start reading everything back
     pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
@@ -262,21 +263,22 @@ void loop() {
 
     for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
       for(uint8_t cell = CELL_IGNORE_INDEX_START; cell < CELL_IGNORE_INDEX_END; cell++){
-            #if DEBUG_CELL_VALUES
-              Serial.print("Slave #");
-              Serial.print(addr);
-              Serial.print("'s cell #");
-              Serial.print(cell);
-              Serial.print(" -> ");
-              Serial.print(cell_codes[addr][cell]*0.0001,4);
-              Serial.println(" V");
-            #endif
+        #if DEBUG_CELL_VALUES
+          Serial.print("Slave #");
+          Serial.print(addr);
+          Serial.print("'s cell #");
+          Serial.print(cell);
+          Serial.print(" -> ");
+          Serial.print(cell_codes[addr][cell]*0.0001,4);
+          Serial.println(" V");
+        #endif
       }
     }
 
     //Transmit Analog-Digital Conversion Start Broadcast to measure GPIOs (Auxiliary)
     //ADAX Command
     LTC6804_adax();
+    delay(3);
 
     //Read GPIO Volts (Temperature values here)
     //RDAUX Command (GPIO Measurements are stored in auxiliary registers)
@@ -293,21 +295,21 @@ void loop() {
       uint16_t vref = aux_codes[addr][5];
       #if DEBUG_CELL_VALUES
         Serial.print("VRef2 -> ");
-        Serial.print(vref*0.0001, 4);
+        Serial.print(vref * 0.0001, 4);
         Serial.println(" V");
       #endif
       for(uint8_t temp = GPIO_IGNORE_INDEX_START; temp < GPIO_IGNORE_INDEX_END; temp++){
-            #if DEBUG_CELL_VALUES
-              Serial.print("Slave #");
-              Serial.print(addr);
-              Serial.print("'s GPIO #");
-              Serial.print(temp);
-              Serial.print(" -> ");
-              Serial.print(volts_to_celsius(aux_codes[addr][temp], vref), 4);
-              Serial.print(" C <=> ");
-              Serial.print(aux_codes[addr][temp] * 0.0001, 4); 
-              Serial.println(" V")
-            #endif
+        #if DEBUG_CELL_VALUES
+          Serial.print("Slave #");
+          Serial.print(addr);
+          Serial.print("'s GPIO #");
+          Serial.print(temp);
+          Serial.print(" -> ");
+          Serial.print(volts_to_celsius(aux_codes[addr][temp], vref), 4);
+          Serial.print(" C <=> ");
+          Serial.print(aux_codes[addr][temp] * 0.0001, 4); 
+          Serial.println(" V")
+        #endif
       }
     }
   
