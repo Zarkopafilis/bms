@@ -10,6 +10,9 @@
 #define DEBUG_CELL_VALUES 1
 #define DEBUG_TEMP_VALUES 1
 
+//Only takes effect when DEBUG = 1
+#define MEASURE_CYCLE_DEBUG_DELAY_MS 100
+
 #define SERIAL_PORT 9600
 
 #define SPI_MODE SPI_MODE3

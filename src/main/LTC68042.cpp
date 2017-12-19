@@ -607,7 +607,7 @@ void LTC6804_wrcfg(uint8_t total_ic,uint8_t config[][6])
   }
   
   //4
-  actual_wakeup_idle(); 															 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
+  wakeup_idle(); 															 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //5
    for(int current_ic = 0; current_ic<total_ic; current_ic++)
   {
@@ -663,7 +663,7 @@ int8_t LTC6804_rdcfg(uint8_t total_ic, uint8_t r_config[][8])
   cmd[3] = 0x0A;
  
   //2
-  actual_wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   //3
    for(int current_ic = 0; current_ic<total_ic; current_ic++)
   {
@@ -709,29 +709,17 @@ We are not going to remove this function because there might be a need for it in
 It's just not going to do anything for now. */
 void wakeup_idle()
 {
-  /*output_low(LTC6804_CS);
+  output_low(LTC6804_CS);
   delayMicroseconds(10); //Guarantees the isoSPI will be in ready mode
-  output_high(LTC6804_CS);*/
+  output_high(LTC6804_CS);
 }
 void wakeup_sleep()
 {
-  /*output_low(LTC6804_CS);
-  delay(1); // Guarantees the LTC6804 will be in standby
-  output_high(LTC6804_CS);*/
-}
-
-void actual_wakeup_idle(){
-  output_low(LTC6804_CS);
-  delayMicroseconds(10); //Guarantees the isoSPI will be in ready mode
-  output_high(LTC6804_CS);
-}
-
-void actual_wakeup_sleep()
-{
   output_low(LTC6804_CS);
   delay(1); // Guarantees the LTC6804 will be in standby
   output_high(LTC6804_CS);
 }
+
 
 /*!**********************************************************
  \brief calaculates  and returns the CRC15

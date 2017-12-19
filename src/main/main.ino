@@ -30,27 +30,6 @@ void setup() {
   LTC6804_initialize();
   
   #if DEBUG
-    Serial.println("Checking if every slave is connected and able to communicate properly");
-  #endif
-
-  //Check if every slave is connected and is able to communicate properly
-  //RDCFG (Read Configuration) Command
-  uint8_t r_cfg[SLAVE_NUM][8];
-
-  pec = LTC6804_rdcfg(SLAVE_NUM, r_cfg);
-
-  if(pec == 0){
-    #if DEBUG_PEC
-      Serial.println("All slaves are connected");
-    #endif
-  }else{
-    #if DEBUG_PEC
-      Serial.print("Slaves may be connected but PEC is wrong!");
-    #endif
-    shut_car_down();
-  }
-  
-  #if DEBUG
     Serial.println("Writing configuration to slaves");
   #endif
 
@@ -94,13 +73,7 @@ void setup() {
       check &= (b == slave_cfg[i]);
     }
 
-    if(check == 1){
-      #if DEBUG
-        Serial.print("Slave ");
-        Serial.print(addr);
-        Serial.println(" got properly configured");
-      #endif
-    }else{
+    if(check == 0){{
       #if DEBUG
         Serial.print("Slave ");
         Serial.print(addr);
@@ -130,11 +103,7 @@ void setup() {
   uint16_t cell_codes[SLAVE_NUM][12];
   pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
 
-  if(pec == 0){
-    #if DEBUG_PEC
-      Serial.println("Slaves sent back correct response to RDCV");
-    #endif
-  }else{
+  if(pec == -1){{
     #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to RDCV!");
     #endif
@@ -171,11 +140,7 @@ void setup() {
   uint16_t aux_codes[SLAVE_NUM][6];
   pec = LTC6804_rdaux(AUX_CH_ALL, SLAVE_NUM, aux_codes);
 
-  if(pec == 0){
-    #if DEBUG_PEC
-      Serial.println("Slaves sent back correct response to RDAUX");
-    #endif
-  }else{
+  if(pec == -1){
     #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to RDAUX!");
     #endif
@@ -198,6 +163,34 @@ void setup() {
   }
 
   #if DEBUG
+    Serial.println("Performing 1 measurement and ignoring the results");
+  #endif
+
+  uint16_t cell_codes[SLAVE_NUM][12];
+  uint16_t aux_codes[SLAVE_NUM][6];  
+
+  LTC6804_adcv();
+  pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
+
+  if(pec == -1){
+    #if DEBUG_PEC
+      Serial.println("Slaves sent back incorrect response to first demo measurement (cells)!");
+    #endif
+    shut_car_down();
+  }
+
+  LTC6804_adax();
+
+  pec = LTC6804_rdaux(AUX_CH_ALL, SLAVE_NUM, aux_codes);
+
+  if(pec == -1){
+    #if DEBUG_PEC
+      Serial.println("Slaves sent back incorrect response to first demo measurement (aux/temp)!");
+    #endif
+    shut_car_down();
+  }
+
+  #if DEBUG
     Serial.println("> Setup Complete!");
   #endif
 }
@@ -215,7 +208,10 @@ void loop() {
 
   //Setup has been completed, so we are ready to start making some measurements
   while(1){
-    
+    #if DEBUG
+      sleep(MEASURE_CYCLE_DEBUG_DELAY_MS);
+    #endif
+
     if(measure_cycle_start == 0 && measure_cycle_end == 0xFFFFFFFF){
       //Ignore this one, because it's the first time this loop runs
     }else{
@@ -308,7 +304,9 @@ void loop() {
               Serial.print(temp);
               Serial.print(" -> ");
               Serial.print(volts_to_celsius(aux_codes[addr][temp], vref), 4);
-              Serial.println(" V");
+              Serial.print(" C <=> ");
+              Serial.print(aux_codes[addr][temp] * 0.0001, 4); 
+              Serial.println(" V")
             #endif
       }
     }
@@ -318,21 +316,19 @@ void loop() {
 }
 
 float volts_to_celsius(float cell, float vref){
-  float R10=10;
-  float R25=10;
-  float vr,T,r;
-  float Aa=0.003354016 ;
-  float Bb=0.000256985 ;
-  float Cc= 2.62013*0.000001;
-  float Dd=6.38309*0.00000001;
-  float t;
+  float R10 = 10;
+  float R25 = 10;
+  float Aa = 0.003354016;
+  float Bb = 0.000256985;
+  float Cc = 2.62013*0.000001;
+  float Dd = 6.38309*0.00000001;
   
-  vr =cell*0.0001;
+  float vr = cell * 0.0001;
   
-  r=-(vr*R10)/(vr-vref*0.0001);
-  T= Aa + Bb*log(r/R25)+ Cc*log(r/R25)*log(r/R25) +Dd*log(r/R25)*log(r/R25)*log(r/R25);
+  float r = -(vr * R10) / (vr - vref * 0.0001);
+  float T = Aa + Bb * log(r / R25) + Cc * log(r / R25) * log(r / R25) + Dd * log(r / R25) * log(r / R25) * log(r/R25);
 
-  t=1/T -272.15;
+  float t = 1/T -272.15;
   return t;
 }
 
