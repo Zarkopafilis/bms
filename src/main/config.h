@@ -11,9 +11,9 @@
 #define DEBUG_TEMP_VALUES 1
 
 //Only takes effect when DEBUG = 1
-#define MEASURE_CYCLE_DEBUG_DELAY_MS 100
+const uint16_t MEASURE_CYCLE_DEBUG_DELAY_MS 100
 
-#define SERIAL_PORT 9600
+const uint16_t SERIAL_PORT 9600
 
 #define SPI_MODE SPI_MODE3
 #define SPI_CLOCK_DIV SPI_CLOCK_DIV16
@@ -21,16 +21,24 @@
 //This is the configuration that will be written to every slave
 //REFON=1 -> Always awake
 //VUV (Undervoltage) & VOV (Overvoltage) Values
-extern uint8_t slave_cfg[6];
+const uint8_t slave_drive_mode_cfg[6] = 
+{
+ 0B00000100, //GPIO 5~1 REFON DTEN ADCOPT
+ 0B00000000, //VUV[7~0]
+ 0B00000000, //VOV[3~0] VOV[11~8]
+ 0B00000000, //VOV[11~4]
+ 0B00000000, //DCC 8~1
+ 0B00000000 //DCTO[3~0] DCC 12~9
+};
 
 //Cell discharge permitted
 //Disabled = 0 | Enabled = 1
-extern uint8_t DCP_MODE;
+#define DCP_MODE DCP_DISABLED
 
 //Number of LTC6811-2 Multicell battery monitors
-extern uint8_t SLAVE_NUM;
+const uint8_t SLAVE_NUM 1
 
-extern uint16_t MAX_MEASURE_CYCLE_DURATION_MS;
+const uint16_t MAX_MEASURE_CYCLE_DURATION_MS 500
 
 //Cells with index > CELL_IGNORE_INDEX will be ignored from measurements.
 //This is useful for cases where your cells on a module 
@@ -40,51 +48,28 @@ extern uint16_t MAX_MEASURE_CYCLE_DURATION_MS;
 //are going to be ignored both from the open wire checks and
 //the measurements
 //Set to 12(Max Cells) in order to measure all
-extern uint8_t CELL_IGNORE_INDEX_START;
-extern uint8_t CELL_IGNORE_INDEX_END;
+const uint8_t CELL_IGNORE_INDEX_START 0
+const uint8_t CELL_IGNORE_INDEX_END 12
 
 //Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
 //sensors (or thermistors) are wired in. The monitors have 5 GPIOs
 //Set to 5(Max GPIOs) in order to measure all
-extern uint8_t GPIO_IGNORE_INDEX_START;
-extern uint8_t GPIO_IGNORE_INDEX_END;
+const uint8_t GPIO_IGNORE_INDEX_START 0
+const uint8_t GPIO_IGNORE_INDEX_END 5
 
 //Temperature Voltage Read for Undertemping and Overtemping
-extern uint16_t TUT;
-extern uint16_t TOT;
+const uint16_t TUT 5
+const uint16_t TOT 100
 
 //Voltage for Undervolting and Overvolting
-extern uint16_t VUV;
-extern uint16_t VOV;
+const uint16_t VUV 2
+const uint16_t VOV 5
 
-//Teensy 3.1 & 3.2 has got 2048 bytes available
-#define FLAG_ADDR 0
-#define CORRECT_FLAG 0xFF
+const uint8_t SHUTDOWN_PIN 15
+const uint8_t SHUTDOWN_PIN_IDLE 1
 
-#define DCP_MODE_ADDR 1
-#define SLAVE_NUM_ADDR 2
-//Note MAX_MEASURE_CYCLE_DURATION_MS IS uint16 | 2 bytes 
-#define MAX_MEASURE_CYCLE_DURATION_MS_ADDR 3
-#define CELL_IGNORE_INDEX_START_ADDR 4
-#define CELL_IGNORE_INDEX_END_ADDR 5
-#define GPIO_IGNORE_INDEX_START_ADDR 6
-#define GPIO_IGNORE_INDEX_END_ADDR 7
-//Note TUT, TOT, VUV & VOV are uint16 | 2 bytes each
-#define TUT_ADDR 8
-#define TOT_ADDR 10
-#define VUV_ADDR 12
-#define VOV_ADDR 14
-//uint8_t slave_cfg[6] | 6 bytes
-#define SLAVE_CONFIG_ADDR 16
-
-#define SHUTDOWN_PIN 10
-#define SHUTDOWN_PIN_IDLE 1
-
-//Loads config from EEPROM if persist flag is correct
-void config_load();
-
-//Persists current config to EEPROM and sets persist flag 
-void config_persist();
+const uint8_t CHARGE_PIN 16
+const uint8_t CHARGE_PIN_IDLE 0
 
 //Writes the whole config to serial if DEBUG is 1
 void config_print();

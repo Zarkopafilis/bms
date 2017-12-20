@@ -6,6 +6,9 @@
 #include <SPI.h>
 #include "config.h"
 
+//These sleeps will guarantee that the commands have took effect upon each slave and occur after transmission of instructions: Write Configuration, Start of Analog-Digital Conversions
+const uint8_t delay_on_send_ms = 3;
+
 /*ADC control Variables for LTC6804*/
 /*6804 conversion command variables.  */
 uint8_t ADCV[2]; //!< Cell Voltage conversion command.
@@ -84,6 +87,8 @@ void LTC6804_adcv()
   output_low(LTC6804_CS);
   spi_write_array(4,cmd);
   output_high(LTC6804_CS);
+
+  delay(delay_on_send_ms);
 }
 
 void LTC6804_adcvax()
@@ -104,6 +109,7 @@ void LTC6804_adcvax()
   spi_write_array(4,cmd);
   output_high(LTC6804_CS);
 
+  delay(delay_on_send_ms);
 }
 
 /*
@@ -136,6 +142,8 @@ void LTC6804_adax()
   output_low(LTC6804_CS);
   spi_write_array(4,cmd);
   output_high(LTC6804_CS);
+
+  delay(delay_on_send_ms);
 }
 /*LTC6804_adax Function sequence:
   
@@ -621,6 +629,8 @@ void LTC6804_wrcfg(uint8_t total_ic,uint8_t config[][6])
 	output_high(LTC6804_CS);
   }
   free(cmd);
+
+  delay(delay_on_send_ms);
 }
 /*
 	1. Load cmd array with the write configuration command and PEC

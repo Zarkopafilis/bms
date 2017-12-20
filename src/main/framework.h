@@ -6,8 +6,13 @@ importantly LTC60842 functions to make them work for teensy. */
 
 #include <stdint.h>
 
-// int8_t LTC6804_adow(uint8_t nIC, uint8_t ignore_index);
+extern int pec;
 
-int8_t LTC68042_ovuv(uint8_t nIC, uint8_t ovuv[][12][2]);
+//10K Thermistor on VRef2 and GPIOx Pin
+float volts_to_celsius(float cell, float vref);
+void shut_car_down();
+
+//Sets up the BMS for the car being ready to drive (not charging)
+void setup_drive_mode();
 
 #endif //FRAMEWORK_H
