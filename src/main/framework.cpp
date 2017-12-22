@@ -9,6 +9,14 @@ importantly LTC60842 functions to make them work for teensy. */
 #include "config.h"
 #include "framework.h"
 
+void output_low(uint8_t pin){
+  digitalWrite(pin, LOW);
+}
+
+void output_high(uint8_t pin){
+  digitalWrite(pin, HIGH);
+}
+
 int pec = 0;
 
 void setup_drive_mode(){

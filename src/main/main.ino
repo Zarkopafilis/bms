@@ -6,6 +6,11 @@
 #include "LTC68042.h"
 #include "framework.h"
 
+#define SERIAL_BAUD_RATE 9600
+
+const LT_SPI lt_spi();
+const LTC6804_2 ltc(&lt_spi);
+
 //This is the entry point. loop() is called after
 void setup() {
   pinMode(SHUTDOWN_PIN, OUTPUT);
@@ -15,7 +20,7 @@ void setup() {
   int charging = digitalRead(CHARGE_PIN) != CHARGE_PIN_IDLE;
 
   #if DEBUG
-    Serial.begin(9600);
+    Serial.begin(SERIAL_BAUD_RATE);
     delay(2000);
     Serial.println("Initializing LTC6804 communication via SPI");
   #endif

@@ -8,6 +8,9 @@ importantly LTC60842 functions to make them work for teensy. */
 
 extern int pec;
 
+void output_low(uint8_t pin);
+void output_high(uint8_t pin);
+
 //10K Thermistor on VRef2 and GPIOx Pin
 float volts_to_celsius(float cell, float vref);
 void shut_car_down();

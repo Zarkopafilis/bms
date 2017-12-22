@@ -11,12 +11,10 @@
 #define DEBUG_TEMP_VALUES 1
 
 //Only takes effect when DEBUG = 1
-const uint16_t MEASURE_CYCLE_DEBUG_DELAY_MS 100
+const uint16_t MEASURE_CYCLE_DEBUG_DELAY_MS =100;
 
-const uint16_t SERIAL_PORT 9600
+const uint16_t SERIAL_PORT =9600;
 
-#define SPI_MODE SPI_MODE3
-#define SPI_CLOCK_DIV SPI_CLOCK_DIV16
 
 //This is the configuration that will be written to every slave
 //REFON=1 -> Always awake
@@ -36,9 +34,9 @@ const uint8_t slave_drive_mode_cfg[6] =
 #define DCP_MODE DCP_DISABLED
 
 //Number of LTC6811-2 Multicell battery monitors
-const uint8_t SLAVE_NUM 1
+const uint8_t SLAVE_NUM =1;
 
-const uint16_t MAX_MEASURE_CYCLE_DURATION_MS 500
+const uint16_t MAX_MEASURE_CYCLE_DURATION_MS= 500;
 
 //Cells with index > CELL_IGNORE_INDEX will be ignored from measurements.
 //This is useful for cases where your cells on a module 
@@ -48,28 +46,28 @@ const uint16_t MAX_MEASURE_CYCLE_DURATION_MS 500
 //are going to be ignored both from the open wire checks and
 //the measurements
 //Set to 12(Max Cells) in order to measure all
-const uint8_t CELL_IGNORE_INDEX_START 0
-const uint8_t CELL_IGNORE_INDEX_END 12
+const uint8_t CELL_IGNORE_INDEX_START= 0;
+const uint8_t CELL_IGNORE_INDEX_END =12;
 
 //Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
 //sensors (or thermistors) are wired in. The monitors have 5 GPIOs
 //Set to 5(Max GPIOs) in order to measure all
-const uint8_t GPIO_IGNORE_INDEX_START 0
-const uint8_t GPIO_IGNORE_INDEX_END 5
+const uint8_t GPIO_IGNORE_INDEX_START =0;
+const uint8_t GPIO_IGNORE_INDEX_END= 5;
 
 //Temperature Voltage Read for Undertemping and Overtemping
-const uint16_t TUT 5
-const uint16_t TOT 100
+const uint16_t TUT= 5;
+const uint16_t TOT =100;
 
 //Voltage for Undervolting and Overvolting
-const uint16_t VUV 2
-const uint16_t VOV 5
+const uint16_t VUV =2;
+const uint16_t VOV =5;
 
-const uint8_t SHUTDOWN_PIN 15
-const uint8_t SHUTDOWN_PIN_IDLE 1
+const uint8_t SHUTDOWN_PIN =15;
+const uint8_t SHUTDOWN_PIN_IDLE =1;
 
-const uint8_t CHARGE_PIN 16
-const uint8_t CHARGE_PIN_IDLE 0
+const uint8_t CHARGE_PIN =16;
+const uint8_t CHARGE_PIN_IDLE =0;
 
 //Writes the whole config to serial if DEBUG is 1
 void config_print();

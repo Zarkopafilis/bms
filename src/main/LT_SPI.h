@@ -7,34 +7,23 @@ the teensy's  SPI capabilities. */
 #include <stdint.h>
 #include <SPI.h>
 
-//Default Slave Select pin - used as an "adapter" define
-#define QUIKEVAL_CS SS
+class LT_SPI{
+  public:
+    LT_SPI(uint8_t sck = SCK,
+                uint8_t mosi = MOSI,
+                uint8_t miso = MISO,
+                uint8_t cs = SS,
+                uint8_t spi_clock_divider = SPI_CLOCK_DIV16,
+                uint8_t spi_mode = SPI_MODE3);
+    ~LT_SPI();
+    
+    //Write a data byte
+    void write(int8_t data);
+    
+    //Read and write a data byte
+    int8_t read(int8_t data);
 
-//Reads and sends a byte
-void spi_transfer_byte(uint8_t cs_pin, uint8_t tx, uint8_t *rx);
-
-//Reads and sends a word
-void spi_transfer_word(uint8_t cs_pin, uint16_t tx, uint16_t *rx);
-
-//Reads and sends a byte array
-void spi_transfer_block(uint8_t cs_pin,uint8_t *tx, uint8_t *rx,uint8_t length);
-
-//Setup the processor for SPI communication.
-//Must be called before using the other SPI routines.
-void spi_enable(uint8_t spi_clock_divider);
-
-//Disable the SPI communications
-void spi_disable();
-
-//Write a data 
-void spi_write(int8_t data);
-
-//Read and write a data byte
-//@return the read byte
-int8_t spi_read(int8_t data);
-
-//Wrapper to redirect calls to use the proper digitalWrite functions for teensy
-void output_low(uint8_t pin);
-void output_high(uint8_t pin);
+    const uint8_t cs;
+};
 
 #endif  // LT_SPI_H

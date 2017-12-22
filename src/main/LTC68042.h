@@ -1,39 +1,11 @@
-/*Header for LTC6804-2 Multicell Battery Monitor*/
-//Only to inherit QUIKEVAL_CS
-#include "LT_SPI.h"
- 
+/*Header for LTC6804-2 Multicell Battery Monitor*/ 
 #ifndef LTC68042_H
 #define LTC68042_H
 
-#ifndef LTC6804_CS
-#define LTC6804_CS QUIKEVAL_CS
-#endif
+#include "LT_SPI.h"
 
-/*Precomputed crc15 table used for the LTC6804 PEC calculation
-	The code used to generate the crc15 table is:
-void generate_crc15_table()
-{
-  int remainder;
-	for(int i = 0; i<256;i++)
-	{	
-		remainder =  i<< 7;
-		for (int bit = 8; bit > 0; --bit)
-  		  {
-     			 if ((remainder & 0x4000) > 0)//equivalent to remainder & 2^14 simply check for MSB
-    			  {
-        				remainder = ((remainder << 1)) ;
-        				remainder = (remainder ^ 0x4599);
-     			 }
-     			 else
-      			{
-       				 remainder = ((remainder << 1));
-      			}
-   		 }
-		crc15Table[i] = remainder&0xFFFF;
-	}
-}*/
-
-static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //Precomputed CRC15 Table
+/* Precomputed crc15 table used for the LTC6804 PEC calculation */
+const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //Precomputed CRC15 Table
 0xff35, 0x2cc8, 0xe951, 0xe263, 0x27fa, 0xad97, 0x680e, 0x633c, 0xa6a5, 0x7558, 0xb0c1, 
 0xbbf3, 0x7e6a, 0x5990, 0x9c09, 0x973b, 0x52a2, 0x815f, 0x44c6, 0x4ff4, 0x8a6d, 0x5b2e,
 0x9eb7, 0x9585, 0x501c, 0x83e1, 0x4678, 0x4d4a, 0x88d3, 0xaf29, 0x6ab0, 0x6182, 0xa41b,
@@ -57,26 +29,12 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 0x2d02, 0xa76f, 0x62f6, 0x69c4, 0xac5d, 0x7fa0, 0xba39, 0xb10b, 0x7492, 0x5368, 0x96f1, 0x9dc3, 
 0x585a, 0x8ba7, 0x4e3e, 0x450c, 0x8095}; 
 
- /*
-  |MD| Dec  | ADC Conversion Model|
-  |--|------|---------------------|
-  |01| 1    | Fast 			   	  |
-  |10| 2    | Normal 			  |
-  |11| 3    | Filtered 		   	  |*/
+//ADC Conversion Mode
 #define MD_FAST 1
 #define MD_NORMAL 2
 #define MD_FILTERED 3
 
- /*|CH | Dec  | Channels to convert |
- |---|------|---------------------|
- |000| 0    | All Cells  		  |
- |001| 1    | Cell 1 and Cell 7   |
- |010| 2    | Cell 2 and Cell 8   |
- |011| 3    | Cell 3 and Cell 9   |
- |100| 4    | Cell 4 and Cell 10  |
- |101| 5    | Cell 5 and Cell 11  |
- |110| 6    | Cell 6 and Cell 12  |*/
-
+//Channels to convert
 #define CELL_CH_ALL 0
 #define CELL_CH_1and7 1
 #define CELL_CH_2and8 2
@@ -85,16 +43,7 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 #define CELL_CH_5and11 5
 #define CELL_CH_6and12 6
 
-/* |CHG | Dec  |Channels to convert   | 
-  |----|------|----------------------|
-  |000 | 0    | All GPIOS and 2nd Ref| 
-  |001 | 1    | GPIO 1 			     |
-  |010 | 2    | GPIO 2               |
-  |011 | 3    | GPIO 3 			  	 |
-  |100 | 4    | GPIO 4 			  	 |
-  |101 | 5    | GPIO 5 			 	 |
-  |110 | 6    | Vref2  			  	 |*/
-
+//Channels to convert
 #define AUX_CH_ALL 0
 #define AUX_CH_GPIO1 1
 #define AUX_CH_GPIO2 2
@@ -103,50 +52,66 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 #define AUX_CH_GPIO5 5
 #define AUX_CH_VREF2 6
 
-//uint8_t CHG = 0; //!< aux channels to be converted
- /* Controls if Discharging transitors are enabled
-  or disabled during Cell conversions.
-  
- |DCP | Discharge Permitted During conversion |
- |----|----------------------------------------|
- |0   | No - discharge is not permitted         |
- |1   | Yes - discharge is permitted           |*/
+//Discharge Permitted During conversion 
 #define DCP_DISABLED 0
 #define DCP_ENABLED 1
 
-void LTC6804_initialize();
+extern "C"{
+  void output_high(uint8_t pin);
+  void output_low(uint8_t pin);
+}
 
-void set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG);
+class LTC6804_2{
+  public:
+  LTC6804_2(LT_SPI * lt_spi,
+            uint8_t total_ic = 1,
+            uint8_t adc_conversion_mode = MD_FAST,
+            uint8_t dishcharge_mode = DCP_DISABLED,
+            uint8_t cell_channels = CELL_CH_ALL,
+            uint8_t aux_channels = AUX_CH_ALL,
+            uint8_t delay_on_send_ms = 3);
 
-void LTC6804_adcv(); 
+  void set_adc(uint8_t md, uint8_t dcp, uint8_t ch, uint8_t chg);
+  
+  void adcv();  
+  void adax();  
+  void adcvax();
+  
+  uint8_t rdcv(uint8_t reg, uint16_t cell_codes[][12]);
+  void rdcv_reg(uint8_t reg, uint8_t *data);
+  
+  int8_t rdaux(uint8_t reg, uint16_t aux_codes[][6]);
+  void rdaux_reg(uint8_t reg, uint8_t *data);
+  
+  void clrcell();
+  void clraux();
+  
+  void wrcfg(uint8_t config[][6]);
+  int8_t rdcfg(uint8_t r_config[][8]);
+  
+  void wakeup_idle();
+  void wakeup_sleep();
 
-void LTC6804_adax();
+  protected:
+  LT_SPI * const spi;
 
-void LTC6804_adcvax();
-
-uint8_t LTC6804_rdcv(uint8_t reg, uint8_t total_ic, uint16_t cell_codes[][12]);
-
-void LTC6804_rdcv_reg(uint8_t reg, uint8_t nIC, uint8_t *data);
-
-int8_t LTC6804_rdaux(uint8_t reg, uint8_t nIC, uint16_t aux_codes[][6]);
-
-void LTC6804_rdaux_reg(uint8_t reg, uint8_t nIC,uint8_t *data);
-
-void LTC6804_clrcell();
-
-void LTC6804_clraux();
-
-void LTC6804_wrcfg(uint8_t nIC,uint8_t config[][6]);
-
-int8_t LTC6804_rdcfg(uint8_t nIC, uint8_t r_config[][8]);
-
-void wakeup_idle();
-void wakeup_sleep();
-
-uint16_t pec15_calc(uint8_t len, uint8_t *data);
-
-void spi_write_array( uint8_t length, uint8_t *data);
-
-void spi_write_read(uint8_t *TxData, uint8_t TXlen, uint8_t *rx_data, uint8_t RXlen);
+  const uint8_t total_ic;
+  
+  //These delays will guarantee that the commands have took effect upon 
+  //each slave and occur after transmission of instructions:
+  //Write Configuration, Start of Analog-Digital Conversions
+  const uint8_t delay_on_send_ms;
+  
+  /*ADC control Variables for LTC6804*/
+  /*6804 conversion command variables.  */
+  uint8_t ADCV[2]; //Cell Voltage conversion command.
+  uint8_t ADAX[2]; //GPIO conversion command.
+  
+  static uint16_t pec15_calc(uint8_t len, uint8_t *data);
+  
+  void spi_write_array(uint8_t length, uint8_t *data);
+  
+  void spi_write_read(uint8_t *TxData, uint8_t TXlen, uint8_t *rx_data, uint8_t RXlen);
+};
 
 #endif //LTC68042_H
