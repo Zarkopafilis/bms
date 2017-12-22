@@ -1,9 +1,6 @@
 /*LTC6804-2 Multicell Battery Monitor Library*/
 #include <Arduino.h>
-#include "LT_SPI.h"
-#include "LTC68042.h"
-#include "config.h"
-#include "framework.h"
+#include "LTC6804_2.h"
 
 /*Maps  global ADC control variables to the appropriate control bytes for each of the different ADC commands
  
@@ -35,15 +32,14 @@ void LTC6804_2::set_adc(uint8_t md, uint8_t dcp, uint8_t ch, uint8_t chg)
 /*This function will initialize all 6804 variables and the SPI port.
 Input: IC: number of ICs being controlled. The address of the ICs in a LTC6804-2 network will start at 0 and continue in an ascending order.*/
 LTC6804_2::LTC6804_2(LT_SPI * lt_spi,
-                      uint8_t total_ic,
                       uint8_t adc_conversion_mode,
-                      uint8_t dishcharge_mode,
+                      uint8_t discharge_mode,
                       uint8_t cell_channels,
                       uint8_t aux_channels,
-                      uint8_t delay_on_send_ms) : spi(lt_spi), total_ic(total_ic), delay_on_send_ms(delay_on_send_ms)
+                      uint8_t delay_on_send_ms) : spi(lt_spi), delay_on_send_ms(delay_on_send_ms)
 {
   //Fastest conversion mode - Disabled Discharge - AUX_CH_ALL measures all 5 GPIOs and 2nd Vref 
-  set_adc(adc_conversion_mode,DCP_MODE,CELL_CH_ALL,AUX_CH_ALL);
+  set_adc(adc_conversion_mode, discharge_mode,cell_channels,aux_channels);
 }
 
 /*Starts cell voltage conversion
@@ -164,7 +160,7 @@ void LTC6804_2::adax()
  @return int8_t, PEC Status:
 	0: No PEC error detected
 	-1: PEC error detected, retry read*/
-uint8_t LTC6804_2::rdcv(uint8_t reg, uint16_t cell_codes[][12])
+uint8_t LTC6804_2::rdcv(uint8_t reg,uint8_t total_ic, uint16_t cell_codes[][12])
 {
   const uint8_t NUM_RX_BYT = 8;
   const uint8_t BYT_IN_REG = 6;
@@ -184,7 +180,7 @@ uint8_t LTC6804_2::rdcv(uint8_t reg, uint16_t cell_codes[][12])
     for(uint8_t cell_reg = 1; cell_reg<5; cell_reg++)         			 //executes once for each of the LTC6804 cell voltage registers
     {
       data_counter = 0;
-      this->rdcv_reg(cell_reg, cell_data);
+      this->rdcv_reg(cell_reg, total_ic, cell_data);
       for (uint8_t current_ic = 0 ; current_ic < total_ic; current_ic++) // executes for every LTC6804 in the stack
       {																 	  // current_ic is used as an IC counter
         //a.ii
@@ -210,7 +206,7 @@ uint8_t LTC6804_2::rdcv(uint8_t reg, uint16_t cell_codes[][12])
   {
 	//b.i
 	
-    this->rdcv_reg(reg, cell_data);
+    this->rdcv_reg(reg, total_ic, cell_data);
     for (uint8_t current_ic = 0 ; current_ic < total_ic; current_ic++) // executes for every LTC6804 in the stack
     {							   									// current_ic is used as an IC counter
 		//b.ii
@@ -261,7 +257,7 @@ return(pec_error);
  @param[in] uint8_t total_ic; This is the number of ICs in the network
  
  @param[out] uint8_t *data; An array of the unparsed cell codes*/
-void LTC6804_2::rdcv_reg(uint8_t reg, uint8_t *data)
+void LTC6804_2::rdcv_reg(uint8_t reg,uint8_t total_ic, uint8_t *data)
 {
   uint8_t cmd[4];
   uint16_t temp_pec;
@@ -331,7 +327,7 @@ void LTC6804_2::rdcv_reg(uint8_t reg, uint8_t *data)
  @return int8_t, PEC Status.
 	0: No PEC error detected
 	-1: PEC error detected, retry read*/
-int8_t LTC6804_2::rdaux(uint8_t reg, uint16_t aux_codes[][6])
+int8_t LTC6804_2::rdaux(uint8_t reg, uint8_t total_ic, uint16_t aux_codes[][6])
 {
   const uint8_t NUM_RX_BYT = 8;
   const uint8_t BYT_IN_REG = 6;
@@ -350,7 +346,7 @@ int8_t LTC6804_2::rdaux(uint8_t reg, uint16_t aux_codes[][6])
     for(uint8_t gpio_reg = 1; gpio_reg<3; gpio_reg++)		 	   		 //executes once for each of the LTC6804 aux voltage registers
     {
       data_counter = 0;
-      this->rdaux_reg(gpio_reg, data);
+      this->rdaux_reg(gpio_reg,total_ic,  data);
       for (uint8_t current_ic = 0 ; current_ic < total_ic; current_ic++) // This loop executes once for each LTC6804
       {									  								 // current_ic is used as an IC counter
         //a.ii
@@ -373,7 +369,7 @@ int8_t LTC6804_2::rdaux(uint8_t reg, uint16_t aux_codes[][6])
   else
   {
 	//b.i
-    this->rdaux_reg(reg, data);
+    this->rdaux_reg(reg, total_ic, data);
     for (int current_ic = 0 ; current_ic < total_ic; current_ic++) // executes for every LTC6804 in the stack
     {							   // current_ic is used as an IC counter
 		//b.ii
@@ -421,7 +417,7 @@ int8_t LTC6804_2::rdaux(uint8_t reg, uint16_t aux_codes[][6])
  @param[in] uint8_t total_ic; This is the number of ICs in the stack
  
  @param[out] uint8_t *data; An array of the unparsed aux codes*/
-void LTC6804_2::rdaux_reg(uint8_t reg, uint8_t *data)
+void LTC6804_2::rdaux_reg(uint8_t reg, uint8_t total_ic, uint8_t *data)
 {
   uint8_t cmd[4];
   uint16_t cmd_pec;
@@ -566,7 +562,7 @@ void LTC6804_2::clraux()
  The function will calculate the needed PEC codes for the write data
  and then transmit data to the ICs on a stack.
 ********************************************************/
-void LTC6804_2::wrcfg(uint8_t config[][6])
+void LTC6804_2::wrcfg(uint8_t total_ic, uint8_t config[][6])
 {
   const uint8_t BYTES_IN_REG = 6;//it is 6 because tx_cfg[][] has 6 cells
   const uint8_t CMD_LEN = 4+(8*total_ic);
@@ -640,7 +636,7 @@ of the array, the second IC in the second 8 byte etc. Below is an table illustra
 @return int8_t PEC Status.
 	0: Data read back has matching PEC
 	-1: Data read back has incorrect PEC */
-int8_t LTC6804_2::rdcfg(uint8_t r_config[][8])
+int8_t LTC6804_2::rdcfg(uint8_t total_ic, uint8_t r_config[][8])
 {
   const uint8_t BYTES_IN_REG = 8;
   

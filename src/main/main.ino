@@ -1,15 +1,63 @@
 #include <stdint.h>
 #include <Arduino.h>
-#include "config.h"
-#include <SPI.h>
-#include "LT_SPI.h"
-#include "LTC68042.h"
 #include "framework.h"
 
 #define SERIAL_BAUD_RATE 9600
 
-const LT_SPI lt_spi();
-const LTC6804_2 ltc(&lt_spi);
+//Temperature Voltage Read for Undertemping and Overtemping
+#define TUT 0
+#define TOT 100
+
+//Voltage for Undervolting and Overvolting
+#define VUV 2;
+#define VOV 5;
+
+#define SHUTDOWN_PIN 15
+#define SHUTDOWN_PIN_IDLE 1
+
+#define CHARGE_PIN 16
+#define CHARGE_PIN_IDLE 0
+
+//Cell discharge permitted
+//Disabled = 0 | Enabled = 1
+#define DCP_MODE DCP_DISABLED
+
+//Number of LTC6811-2 Multicell battery monitors
+#define SLAVE_NUM =1;
+
+#define MAX_MEASURE_CYCLE_DURATION_MS= 500;
+
+//This is the configuration that will be written to every slave while driving
+//REFON=1 -> Always awake
+//VUV (Undervoltage) & VOV (Overvoltage) Values
+const uint8_t drive_config[6] = 
+{
+ 0B00000100, //GPIO 5~1 REFON DTEN ADCOPT
+ 0B00000000, //VUV[7~0]
+ 0B00000000, //VOV[3~0] VOV[11~8]
+ 0B00000000, //VOV[11~4]
+ 0B00000000, //DCC 8~1
+ 0B00000000 //DCTO[3~0] DCC 12~9
+};
+
+//This is the configuration that will be written to every slave while charging
+//REFON=1 -> Always awake
+//VUV (Undervoltage) & VOV (Overvoltage) Values
+const uint8_t charge_config[6] = 
+{
+ 0B00000100, //GPIO 5~1 REFON DTEN ADCOPT
+ 0B00000000, //VUV[7~0]
+ 0B00000000, //VOV[3~0] VOV[11~8]
+ 0B00000000, //VOV[11~4]
+ 0B00000000, //DCC 8~1
+ 0B00000000 //DCTO[3~0] DCC 12~9
+};
+
+void critical_callback(BmsCriticalFrame_t);
+
+LT_SPI * lt_spi;
+LTC6804_2 * ltc;
+BMS * bms;
 
 //This is the entry point. loop() is called after
 void setup() {
@@ -25,12 +73,13 @@ void setup() {
     Serial.println("Initializing LTC6804 communication via SPI");
   #endif
 
-  //Initialize communication with attached LTC via SPI
-  LTC6804_initialize();
-  
-  if(charging != 1){
-    setup_drive_mode();
-  }
+  lt_spi = &LT_SPI();
+  ltc = &LTC6804_2(lt_spi);
+  bms = &(ltc, SLAVE_NUM, charging == 1 ? CHARGE_MODE : DRIVE_MODE,
+          VOV, VUV, TOT, TUT, 
+          &critical_callback,
+          &uint16_volts_to_float
+          &volts_to_celsius);
 }
 
 //Runs repeatedly after setup()
@@ -41,18 +90,6 @@ void loop() {
 
   uint32_t measure_cycle_start = 0, measure_cycle_end = 0xFFFFFFFF, measure_cycle_mean = 0;
 
-  uint16_t cell_codes[SLAVE_NUM][12];
-  uint16_t aux_codes[SLAVE_NUM][6];
-
-  //Write configuration to each slave
-  uint8_t cfg[SLAVE_NUM][6];
-
-  for(uint8_t i = 0; i < SLAVE_NUM; i++){
-    for(uint8_t j = 0; j < 6; j++){
-        cfg[i][j] = slave_drive_mode_cfg[j];
-    }
-  }
-
   //Setup has been completed, so we are ready to start making some measurements
   while(1){
     #if DEBUG
@@ -61,74 +98,7 @@ void loop() {
 
     measure_cycle_start = millis();
 
-    //Write the configuration on every slave on each loop because it gets lost after some time
-    wakeup_sleep();
-    LTC6804_wrcfg(SLAVE_NUM, cfg);
-
-    //Transmit Analog-Digital Conversion Start Broadcast to measure CELLS
-    //ADCV Command
-    LTC6804_adcv();
-
-    //Start reading everything back
-    pec = LTC6804_rdcv(CELL_CH_ALL, SLAVE_NUM, cell_codes);
-
-    if(pec == -1){
-      #if DEBUG_PEC
-        Serial.println("Slaves sent back incorrect response to RDCV!");
-      #endif
-      shut_car_down();
-    }
-
-    for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
-      for(uint8_t cell = CELL_IGNORE_INDEX_START; cell < CELL_IGNORE_INDEX_END; cell++){
-        #if DEBUG_CELL_VALUES
-          Serial.print("Slave #");
-          Serial.print(addr);
-          Serial.print("'s cell #");
-          Serial.print(cell);
-          Serial.print(" -> ");
-          Serial.print(cell_codes[addr][cell]*0.0001,4);
-          Serial.println(" V");
-        #endif
-      }
-    }
-
-    //Transmit Analog-Digital Conversion Start Broadcast to measure GPIOs (Auxiliary)
-    //ADAX Command
-    LTC6804_adax();
-
-    //Read GPIO Volts (Temperature values here)
-    //RDAUX Command (GPIO Measurements are stored in auxiliary registers)
-    pec = LTC6804_rdaux(AUX_CH_ALL, SLAVE_NUM, aux_codes);
-
-    if(pec == -1){
-      #if DEBUG_PEC
-        Serial.println("Slaves sent back incorrect response to RDAUX!");
-      #endif
-      shut_car_down();
-    }
-
-    for(uint8_t addr = 0; addr < SLAVE_NUM; addr++){
-      uint16_t vref = aux_codes[addr][5];
-      #if DEBUG_CELL_VALUES
-        Serial.print("VRef2 -> ");
-        Serial.print(vref * 0.0001, 4);
-        Serial.println(" V");
-      #endif
-      for(uint8_t temp = GPIO_IGNORE_INDEX_START; temp < GPIO_IGNORE_INDEX_END; temp++){
-        #if DEBUG_CELL_VALUES
-          Serial.print("Slave #");
-          Serial.print(addr);
-          Serial.print("'s GPIO #");
-          Serial.print(temp);
-          Serial.print(" -> ");
-          Serial.print(volts_to_celsius(aux_codes[addr][temp], vref), 4);
-          Serial.print(" C <=> ");
-          Serial.print(aux_codes[addr][temp] * 0.0001, 4); 
-          Serial.println(" V")
-        #endif
-      }
-    }
+    bms->tick();
   
     measure_cycle_end = millis();
 
@@ -160,5 +130,18 @@ void loop() {
       #endif
       shut_car_down();
     }
+  }
+}
+
+void critical_callback(BmsCriticalFrame_t frame){
+  return;
+  #if DEBUG
+    Serial.println(">>>> SHUTTING CAR DOWN <<<<");
+  #endif
+
+  digitalWrite(SHUTDOWN_PIN, SHUTDOWN_PIN_IDLE == 1 ? 0 : 1);
+
+  while(1){
+    //Loop endlessly in chaos
   }
 }

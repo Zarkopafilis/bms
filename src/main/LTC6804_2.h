@@ -56,7 +56,7 @@ const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56,
 #define DCP_DISABLED 0
 #define DCP_ENABLED 1
 
-extern "C"{
+extern "C" {
   void output_high(uint8_t pin);
   void output_low(uint8_t pin);
 }
@@ -64,9 +64,8 @@ extern "C"{
 class LTC6804_2{
   public:
   LTC6804_2(LT_SPI * lt_spi,
-            uint8_t total_ic = 1,
             uint8_t adc_conversion_mode = MD_FAST,
-            uint8_t dishcharge_mode = DCP_DISABLED,
+            uint8_t discharge_mode = DCP_DISABLED,
             uint8_t cell_channels = CELL_CH_ALL,
             uint8_t aux_channels = AUX_CH_ALL,
             uint8_t delay_on_send_ms = 3);
@@ -77,25 +76,23 @@ class LTC6804_2{
   void adax();  
   void adcvax();
   
-  uint8_t rdcv(uint8_t reg, uint16_t cell_codes[][12]);
-  void rdcv_reg(uint8_t reg, uint8_t *data);
+  uint8_t rdcv(uint8_t reg, uint8_t total_ic, uint16_t cell_codes[][12]);
+  void rdcv_reg(uint8_t reg, uint8_t total_ic, uint8_t *data);
   
-  int8_t rdaux(uint8_t reg, uint16_t aux_codes[][6]);
-  void rdaux_reg(uint8_t reg, uint8_t *data);
+  int8_t rdaux(uint8_t reg, uint8_t total_ic, uint16_t aux_codes[][6]);
+  void rdaux_reg(uint8_t reg, uint8_t total_ic, uint8_t *data);
   
   void clrcell();
   void clraux();
   
-  void wrcfg(uint8_t config[][6]);
-  int8_t rdcfg(uint8_t r_config[][8]);
+  void wrcfg(uint8_t total_ic, uint8_t config[][6]);
+  int8_t rdcfg(uint8_t total_ic, uint8_t r_config[][8]);
   
   void wakeup_idle();
   void wakeup_sleep();
 
   protected:
   LT_SPI * const spi;
-
-  const uint8_t total_ic;
   
   //These delays will guarantee that the commands have took effect upon 
   //each slave and occur after transmission of instructions:

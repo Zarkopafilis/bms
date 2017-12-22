@@ -6,8 +6,6 @@ the hardware SPI port.
 */
 
 #include <Arduino.h>
-#include <stdint.h>
-#include <SPI.h>
 #include "LT_SPI.h"
 
 LT_SPI::LT_SPI(uint8_t sck,
