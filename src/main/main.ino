@@ -9,8 +9,8 @@
 #define TOT 100
 
 //Voltage for Undervolting and Overvolting
-#define VUV 2;
-#define VOV 5;
+#define VUV 2
+#define VOV 5
 
 #define SHUTDOWN_PIN 15
 #define SHUTDOWN_PIN_IDLE 1
@@ -23,9 +23,9 @@
 #define DCP_MODE DCP_DISABLED
 
 //Number of LTC6811-2 Multicell battery monitors
-#define SLAVE_NUM =1;
+#define SLAVE_NUM 1
 
-#define MAX_MEASURE_CYCLE_DURATION_MS= 500;
+#define MAX_MEASURE_CYCLE_DURATION_MS 500
 
 //This is the configuration that will be written to every slave while driving
 //REFON=1 -> Always awake
@@ -53,6 +53,7 @@ const uint8_t charge_config[6] =
  0B00000000 //DCTO[3~0] DCC 12~9
 };
 
+void shut_car_down();
 void critical_callback(BmsCriticalFrame_t);
 
 LT_SPI * lt_spi;
@@ -73,12 +74,12 @@ void setup() {
     Serial.println("Initializing LTC6804 communication via SPI");
   #endif
 
-  lt_spi = &LT_SPI();
-  ltc = &LTC6804_2(lt_spi);
-  bms = &(ltc, SLAVE_NUM, charging == 1 ? CHARGE_MODE : DRIVE_MODE,
+  lt_spi = new LT_SPI();
+  ltc = new LTC6804_2(lt_spi);
+  bms = new BMS(ltc, SLAVE_NUM, charging == 1 ? CHARGE_MODE : DRIVE_MODE,
           VOV, VUV, TOT, TUT, 
           &critical_callback,
-          &uint16_volts_to_float
+          &uint16_volts_to_float,
           &volts_to_celsius);
 }
 
@@ -98,7 +99,9 @@ void loop() {
 
     measure_cycle_start = millis();
 
+    //Tick BMS
     bms->tick();
+    
   
     measure_cycle_end = millis();
 
@@ -134,7 +137,14 @@ void loop() {
 }
 
 void critical_callback(BmsCriticalFrame_t frame){
+  #if DEBUG
+    Serial.println(">>> Critical BMS Frame");
+  #endif
   return;
+  shut_car_down();
+}
+
+void shut_car_down(){
   #if DEBUG
     Serial.println(">>>> SHUTTING CAR DOWN <<<<");
   #endif
@@ -145,3 +155,4 @@ void critical_callback(BmsCriticalFrame_t frame){
     //Loop endlessly in chaos
   }
 }
+

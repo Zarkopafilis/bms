@@ -10,8 +10,8 @@ float volts_to_celsius(float cell, float vref){
   float R25 = 10;
   float Aa = 0.003354016;
   float Bb = 0.000256985;
-  float Cc = 2.62013*0.000001;
-  float Dd = 6.38309*0.00000001;
+  float Cc = 2.62013 * 0.000001;
+  float Dd = 6.38309 * 0.00000001;
   
   float vr = cell * 0.0001;
   
@@ -48,6 +48,10 @@ BMS::BMS(LTC6804_2 * ltc,
         ov(overvolts), uv(undervolts), ot(overtemp), ut(undertemp),
         critical_callback(critical_callback), uv_to_float(uv_to_float), v_to_celsius(v_to_celsius)
 {
+
+  this->cell_codes = malloc(sizeof(uint16_t) * total_ic * (CELL_IGNORE_INDEX_END - CELL_IGNORE_INDEX_START));
+  this->aux_codes = malloc(sizeof(uint16_t) * total_ic * (GPIO_IGNORE_INDEX_END - GPIO_IGNORE_INDEX_START));
+  
   switch(mode){
     case DRIVE_MODE:
       #if DEBUG
@@ -94,6 +98,7 @@ void BMS::setup_drive_mode(){
     Serial.println("Evaluating wether configuration was indeed changed");
   #endif
 
+  uint8_t r_cfg[total_ic][8];
   //Read Configuration again to evaluate that previous step took effect
   //RDCFG Command
   int pec = ltc->rdcfg(total_ic, r_cfg);
@@ -145,8 +150,8 @@ void BMS::setup_drive_mode(){
     Serial.println("Reading all cell values and comparing with 0xFF");
   #endif
   //Start reading everything
-  uint16_t cell_codes[total_ic][12];
-  pec = ltc->rdcv(CELL_CH_ALL, total_ic, cell_codes);
+  uint16_t cell_codez[total_ic][12];
+  pec = ltc->rdcv(CELL_CH_ALL, total_ic, cell_codez);
 
   if(pec == -1){
     #if DEBUG_PEC
@@ -157,7 +162,7 @@ void BMS::setup_drive_mode(){
 
   for(uint8_t addr = 0; addr < total_ic; addr++){
     for(uint8_t cell = CELL_IGNORE_INDEX_START; cell < CELL_IGNORE_INDEX_END; cell++){
-      if(cell_codes[addr][cell] != 0xFFFF){
+      if(cell_codez[addr][cell] != 0xFFFF){
           #if DEBUG
             Serial.print("Slave #");
             Serial.print(addr);
@@ -182,8 +187,8 @@ void BMS::setup_drive_mode(){
   #endif
   //Check if every auxiliary register is 0xFF in order to determine
   //Wether any possible bits are stuck
-  uint16_t aux_codes[total_ic][6];
-  pec = ltc->rdaux(AUX_CH_ALL, total_ic, aux_codes);
+  uint16_t aux_codez[total_ic][6];
+  pec = ltc->rdaux(AUX_CH_ALL, total_ic, aux_codez);
   
 
   if(pec == -1){
@@ -195,7 +200,7 @@ void BMS::setup_drive_mode(){
 
   for(uint8_t addr = 0; addr < total_ic; addr++){
     for(uint8_t aux = 0; aux < 6; aux++){
-      if(aux_codes[addr][aux] != 0xFFFF){
+      if(aux_codez[addr][aux] != 0xFFFF){
         #if DEBUG
           Serial.print("Slave #");
           Serial.print(addr);
@@ -211,9 +216,6 @@ void BMS::setup_drive_mode(){
   #if DEBUG
     Serial.println("Performing 1 measurement and ignoring the results");
   #endif
-  
-  uint16_t cell_codez[total_ic][12];
-  uint16_t aux_codez[total_ic][6];  
 
   ltc->adcv();
 
@@ -250,8 +252,8 @@ void BMS::setup_charge_mode(){
 }
 
 void BMS::tick_drive_mode(){
-    uint16_t cell_codes[total_ic][12];
-    uint16_t aux_codes[total_ic][6];
+    uint16_t cell_codez[total_ic][12];
+    uint16_t aux_codez[total_ic][6];
 
     //Write configuration to each slave
     uint8_t cfg[total_ic][6];
@@ -271,7 +273,7 @@ void BMS::tick_drive_mode(){
     ltc->adcv();
 
     //Start reading everything back
-    int pec = ltc->rdcv(CELL_CH_ALL, total_ic, cell_codes);
+    int pec = ltc->rdcv(CELL_CH_ALL, total_ic, cell_codez);
 
     if(pec == -1){
       #if DEBUG_PEC
@@ -288,7 +290,7 @@ void BMS::tick_drive_mode(){
           Serial.print("'s cell #");
           Serial.print(cell);
           Serial.print(" -> ");
-          Serial.print(uv_to_float(cell_codes[addr][cell]),4);
+          Serial.print(uv_to_float(cell_codez[addr][cell]),4);
           Serial.println(" V");
         #endif
       }
@@ -300,7 +302,7 @@ void BMS::tick_drive_mode(){
 
     //Read GPIO Volts (Temperature values here)
     //RDAUX Command (GPIO Measurements are stored in auxiliary registers)
-    pec = ltc->rdaux(AUX_CH_ALL, total_ic, aux_codes);
+    pec = ltc->rdaux(AUX_CH_ALL, total_ic, aux_codez);
 
     if(pec == -1){
       #if DEBUG_PEC
@@ -310,7 +312,7 @@ void BMS::tick_drive_mode(){
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++){
-      uint16_t vref = aux_codes[addr][5];
+      uint16_t vref = aux_codez[addr][5];
       #if DEBUG_CELL_VALUES
         Serial.print("VRef2 -> ");
         Serial.print(uv_to_float(vref), 4);
@@ -323,11 +325,22 @@ void BMS::tick_drive_mode(){
           Serial.print("'s GPIO #");
           Serial.print(temp);
           Serial.print(" -> ");
-          Serial.print(v_to_celsius(uv_to_float(aux_codes[addr][temp]), uv_to_float(vref)), 4);
+          Serial.print(v_to_celsius(uv_to_float(aux_codez[addr][temp]), uv_to_float(vref)), 4);
           Serial.print(" C <=> ");
-          Serial.print(uv_to_float(aux_codes[addr][temp]), 4); 
+          Serial.print(uv_to_float(aux_codez[addr][temp]), 4); 
           Serial.println(" V");
         #endif
+      }
+    }
+
+    for(uint8_t addr = 0; addr < total_ic; addr++){
+      for(uint8_t cell = 0; cell < (CELL_IGNORE_INDEX_END - CELL_IGNORE_INDEX_START); cell++){
+        *(cell_codes + addr * (CELL_IGNORE_INDEX_END - CELL_IGNORE_INDEX_START) + cell) = cell_codez[addr][cell + CELL_IGNORE_INDEX_START];
+      }
+    }
+    for(uint8_t addr = 0; addr < total_ic; addr++){
+      for(uint8_t temp = 0; temp < (GPIO_IGNORE_INDEX_END - GPIO_IGNORE_INDEX_START); temp++){
+        *(aux_codes + addr * (GPIO_IGNORE_INDEX_END - GPIO_IGNORE_INDEX_START) + temp) = aux_codez[addr][temp + GPIO_IGNORE_INDEX_START];
       }
     }
 }

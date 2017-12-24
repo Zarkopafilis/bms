@@ -31,12 +31,12 @@ const BmsCriticalFrame_t critical_bms_error{0 , -1 , -1};
 class BMS{
   public:
   BMS(LTC6804_2 * ltc,
-      uint8_t total_ic = 1,
-      uint8_t mode = 0,
-      float overvolts = 500,
-      float undervolts = 300,
-      float overtemp = 100,
-      float undertemp = -15,
+      uint8_t total_ic,
+      uint8_t mode,
+      float overvolts,
+      float undervolts,
+      float overtemp ,
+      float undertemp,
       void (* critical_callback)(BmsCriticalFrame_t),
       float (* uv_to_float)(uint16_t),
       float (* v_to_celsius)(float, float));
@@ -50,6 +50,9 @@ class BMS{
   const uint8_t total_ic;
 
   const uint8_t drive_cfg[6];
+
+  uint16_t * cell_codes;
+  uint16_t * aux_codes;
 
   void tick_charge_mode();
   void tick_drive_mode();
