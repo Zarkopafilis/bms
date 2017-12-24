@@ -34,23 +34,41 @@ void output_high(uint8_t pin){
   digitalWrite(pin, HIGH);
 }
 
-BMS::BMS(LTC6804_2 * ltc,
+IVT_Current_Measure_Frame IVT::tick(){
+  IVT_Current_Measure_Frame fr = {0,0};
+  CAN_message_t message;
+  while(Can0.available()){
+    Can0.read(message);
+    if(message.id == IVT_CURRENT_CANID){
+      fr = {1, message.buf[2] << 24 | message.buf[3] << 16 | message.buf[4] << 8 | message.buf[5]}; 
+    }
+  }
+
+  if(fr.success == 1){
+    this->frame = fr;
+  }
+  return fr;
+}
+
+BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
       uint8_t total_ic,
       uint8_t mode,
       float overvolts,
       float undervolts,
       float overtemp,
       float undertemp,
+      uint8_t cell_start, uint8_t cell_end,
+      uint8_t aux_start, uint8_t aux_end,
       void (* critical_callback)(BmsCriticalFrame_t),
       float (* const uv_to_float)(uint16_t),
       float (* const v_to_celsius)(float, float)) :
-        ltc(ltc), total_ic(total_ic),
+        ltc(ltc), ivt(ivt), total_ic(total_ic),
         ov(overvolts), uv(undervolts), ot(overtemp), ut(undertemp),
+        cell_start(cell_start), cell_end(cell_end), aux_start(aux_start), aux_end(aux_end),
         critical_callback(critical_callback), uv_to_float(uv_to_float), v_to_celsius(v_to_celsius)
 {
-
-  this->cell_codes = malloc(sizeof(uint16_t) * total_ic * (CELL_IGNORE_INDEX_END - CELL_IGNORE_INDEX_START));
-  this->aux_codes = malloc(sizeof(uint16_t) * total_ic * (GPIO_IGNORE_INDEX_END - GPIO_IGNORE_INDEX_START));
+  this->cell_codes = malloc(sizeof(uint16_t) * total_ic * (cell_end - cell_start));
+  this->aux_codes = malloc(sizeof(uint16_t) * total_ic * (aux_end - aux_start));
   
   switch(mode){
     case DRIVE_MODE:
@@ -74,6 +92,11 @@ BMS::BMS(LTC6804_2 * ltc,
       this->setup_charge_mode();
       break;
   }
+}
+
+BMS::~BMS(){
+  free(this->aux_codes);
+  free(this->cell_codes);
 }
 
 void BMS::setup_drive_mode(){
@@ -161,7 +184,7 @@ void BMS::setup_drive_mode(){
   }
 
   for(uint8_t addr = 0; addr < total_ic; addr++){
-    for(uint8_t cell = CELL_IGNORE_INDEX_START; cell < CELL_IGNORE_INDEX_END; cell++){
+    for(uint8_t cell = cell_start; cell < cell_end; cell++){
       if(cell_codez[addr][cell] != 0xFFFF){
           #if DEBUG
             Serial.print("Slave #");
@@ -283,7 +306,7 @@ void BMS::tick_drive_mode(){
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++){
-      for(uint8_t cell = CELL_IGNORE_INDEX_START; cell < CELL_IGNORE_INDEX_END; cell++){
+      for(uint8_t cell = cell_start; cell < cell_end; cell++){
         #if DEBUG_CELL_VALUES
           Serial.print("Slave #");
           Serial.print(addr);
@@ -318,7 +341,7 @@ void BMS::tick_drive_mode(){
         Serial.print(uv_to_float(vref), 4);
         Serial.println(" V");
       #endif
-      for(uint8_t temp = GPIO_IGNORE_INDEX_START; temp < GPIO_IGNORE_INDEX_END; temp++){
+      for(uint8_t temp = aux_start; temp < aux_end; temp++){
         #if DEBUG_CELL_VALUES
           Serial.print("Slave #");
           Serial.print(addr);
@@ -334,13 +357,13 @@ void BMS::tick_drive_mode(){
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++){
-      for(uint8_t cell = 0; cell < (CELL_IGNORE_INDEX_END - CELL_IGNORE_INDEX_START); cell++){
-        *(cell_codes + addr * (CELL_IGNORE_INDEX_END - CELL_IGNORE_INDEX_START) + cell) = cell_codez[addr][cell + CELL_IGNORE_INDEX_START];
+      for(uint8_t cell = 0; cell < (cell_end - cell_start); cell++){
+        *(cell_codes + addr * (cell_end - cell_start) + cell) = cell_codez[addr][cell + cell_start];
       }
     }
     for(uint8_t addr = 0; addr < total_ic; addr++){
-      for(uint8_t temp = 0; temp < (GPIO_IGNORE_INDEX_END - GPIO_IGNORE_INDEX_START); temp++){
-        *(aux_codes + addr * (GPIO_IGNORE_INDEX_END - GPIO_IGNORE_INDEX_START) + temp) = aux_codez[addr][temp + GPIO_IGNORE_INDEX_START];
+      for(uint8_t temp = 0; temp < (aux_end - aux_start); temp++){
+        *(aux_codes + addr * (aux_end - aux_start) + temp) = aux_codez[addr][temp + aux_start];
       }
     }
 }

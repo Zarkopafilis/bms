@@ -59,6 +59,7 @@ void critical_callback(BmsCriticalFrame_t);
 LT_SPI * lt_spi;
 LTC6804_2 * ltc;
 BMS * bms;
+IVT * ivt;
 
 //This is the entry point. loop() is called after
 void setup() {
@@ -71,13 +72,16 @@ void setup() {
   #if DEBUG
     Serial.begin(SERIAL_BAUD_RATE);
     delay(2000);
-    Serial.println("Initializing LTC6804 communication via SPI");
   #endif
+
+  Can0.begin();
 
   lt_spi = new LT_SPI();
   ltc = new LTC6804_2(lt_spi);
-  bms = new BMS(ltc, SLAVE_NUM, charging == 1 ? CHARGE_MODE : DRIVE_MODE,
+  ivt = new IVT();
+  bms = new BMS(ltc, ivt, SLAVE_NUM, charging == 1 ? CHARGE_MODE : DRIVE_MODE,
           VOV, VUV, TOT, TUT, 
+          CELL_IGNORE_INDEX_START, CELL_IGNORE_INDEX_END, GPIO_IGNORE_INDEX_START, GPIO_IGNORE_INDEX_END,
           &critical_callback,
           &uint16_volts_to_float,
           &volts_to_celsius);
@@ -101,7 +105,6 @@ void loop() {
 
     //Tick BMS
     bms->tick();
-    
   
     measure_cycle_end = millis();
 
