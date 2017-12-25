@@ -25,17 +25,31 @@ float uint16_volts_to_float(uint16_t volts);
 typedef struct ivt_amps_frame{
   int success;//1 for success, 0 for failure (no frames waiting)
   uint32_t amps;
-} IVT_Current_Measure_Frame;
+} IVTCurrentMeasureFrame_t;
 
+//Dumb current measure sensor that returns measure frames and caches last successful measurement
 class IVT {
   public:
-    IVT_Current_Measure_Frame tick();
+    IVT(FlexCAN * can);
+    virtual IVTCurrentMeasureFrame_t tick();
     //Last successful measurement frame
-    IVT_Current_Measure_Frame frame;
+    IVTCurrentMeasureFrame_t frame;
+
+  protected:
+    FlexCAN * const can;  
+};
+
+//This dummy ivt sensor only returns successful measurements of 0 amps
+class IVT_Dummy : public IVT{
+  public:
+    IVT_Dummy();
+    IVTCurrentMeasureFrame_t tick();
 };
 
 //If volts = temp = 0 and mode != 1 | 2 => warning
-//If volts = temp = -1 => critical error
+//If volts = temp = amps = -1 => critical error
+//If volts = temp = 0 , amps = -1 => sensor loss
+//Else, normal values indicate whats off-limit
 typedef struct bms_critical_frame {
   uint8_t mode;
   float volts;
@@ -43,8 +57,11 @@ typedef struct bms_critical_frame {
   uint32_t amps;
 } BmsCriticalFrame_t;
 
-const BmsCriticalFrame_t critical_bms_error{0 , -1 , -1};
+const BmsCriticalFrame_t critical_bms_error{0 , -1 , -1, 0xFFFFFFFF};
 
+//The actual,non-dumb BMS class. It monitors through the sensors (Currently LTC6804_2 and IVT). You need to plug in
+//Some logic for it to work properly. All it does is to report values as a 'Critical BMS Frame'
+//The whole system works in a matter of 'ticks' as a dinstinct time frame. Previous values are cached.
 class BMS{
   public:
   BMS(LTC6804_2 * ltc, IVT * ivt,
@@ -56,6 +73,7 @@ class BMS{
       float undertemp,
       uint8_t cell_start, uint8_t cell_end,
       uint8_t aux_start, uint8_t aux_end,
+      const uint8_t drive_cfg[6],
       void (* critical_callback)(BmsCriticalFrame_t),
       float (* uv_to_float)(uint16_t),
       float (* v_to_celsius)(float, float));
@@ -70,16 +88,16 @@ class BMS{
   protected:
   LTC6804_2 * const ltc;
   IVT * const ivt;
-  const float ov, uv , ot, ut;
-  
+
   const uint8_t total_ic;
+  const float ov, uv , ot, ut;
   const uint8_t cell_start, cell_end, aux_start, aux_end;
   
-  const uint8_t drive_cfg[6];
+  const uint8_t * drive_cfg;
 
   void tick_charge_mode();
   void tick_drive_mode();
-
+  
   void setup_charge_mode();
   void setup_drive_mode();
   
@@ -87,7 +105,5 @@ class BMS{
   float (* const uv_to_float)(uint16_t);
   float (* const v_to_celsius)(float, float);
 };
-
-
 
 #endif //FRAMEWORK_H

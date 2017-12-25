@@ -34,12 +34,18 @@ void output_high(uint8_t pin){
   digitalWrite(pin, HIGH);
 }
 
-IVT_Current_Measure_Frame IVT::tick(){
-  IVT_Current_Measure_Frame fr = {0,0};
+IVT::IVT(FlexCAN * can) : can(can){}
+
+IVTCurrentMeasureFrame_t IVT::tick(){
+  IVTCurrentMeasureFrame_t fr = {0,0};
   CAN_message_t message;
-  while(Can0.available()){
-    Can0.read(message);
+  while(this->can->available()){
+    this->can->read(message);
     if(message.id == IVT_CURRENT_CANID){
+      uint32_t val = message.buf[2] << 24;
+      val |= message.buf[3] << 16;
+      val |= message.buf[4] << 8;
+      val |= message.buf[5];
       fr = {1, message.buf[2] << 24 | message.buf[3] << 16 | message.buf[4] << 8 | message.buf[5]}; 
     }
   }
@@ -48,6 +54,12 @@ IVT_Current_Measure_Frame IVT::tick(){
     this->frame = fr;
   }
   return fr;
+}
+
+IVT_Dummy::IVT_Dummy() : IVT(nullptr){}
+
+IVTCurrentMeasureFrame_t IVT_Dummy::tick(){
+  return (IVTCurrentMeasureFrame_t) {1,0};
 }
 
 BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
@@ -59,16 +71,18 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
       float undertemp,
       uint8_t cell_start, uint8_t cell_end,
       uint8_t aux_start, uint8_t aux_end,
+      const uint8_t drive_cfg[6],
       void (* critical_callback)(BmsCriticalFrame_t),
       float (* const uv_to_float)(uint16_t),
       float (* const v_to_celsius)(float, float)) :
         ltc(ltc), ivt(ivt), total_ic(total_ic),
         ov(overvolts), uv(undervolts), ot(overtemp), ut(undertemp),
         cell_start(cell_start), cell_end(cell_end), aux_start(aux_start), aux_end(aux_end),
+        drive_cfg(drive_cfg),
         critical_callback(critical_callback), uv_to_float(uv_to_float), v_to_celsius(v_to_celsius)
 {
-  this->cell_codes = malloc(sizeof(uint16_t) * total_ic * (cell_end - cell_start));
-  this->aux_codes = malloc(sizeof(uint16_t) * total_ic * (aux_end - aux_start));
+  this->cell_codes = (uint16_t *) malloc(sizeof(uint16_t) * total_ic * (cell_end - cell_start));
+  this->aux_codes = (uint16_t *) malloc(sizeof(uint16_t) * total_ic * (aux_end - aux_start));
   
   switch(mode){
     case DRIVE_MODE:
@@ -110,7 +124,7 @@ void BMS::setup_drive_mode(){
 
   for(uint8_t i = 0; i < total_ic; i++){
     for(uint8_t j = 0; j < 6; j++){
-        cfg[i][j] = drive_cfg[j];
+        cfg[i][j] = *(drive_cfg + j);
     }
   }
 
@@ -143,7 +157,7 @@ void BMS::setup_drive_mode(){
     //No need to check the 2 PEC bytes again
     for (uint8_t i = 0; i < 6; i++){
       uint8_t b = r_cfg[addr][i];
-      check &= (b == drive_cfg[i]);
+      check &= (b == *(drive_cfg + i));
     }
 
     if(check == 0){
@@ -212,7 +226,6 @@ void BMS::setup_drive_mode(){
   //Wether any possible bits are stuck
   uint16_t aux_codez[total_ic][6];
   pec = ltc->rdaux(AUX_CH_ALL, total_ic, aux_codez);
-  
 
   if(pec == -1){
     #if DEBUG_PEC
@@ -283,7 +296,7 @@ void BMS::tick_drive_mode(){
 
     for(uint8_t i = 0; i < total_ic; i++){
       for(uint8_t j = 0; j < 6; j++){
-          cfg[i][j] = drive_cfg[j];
+          cfg[i][j] = *(drive_cfg + j);
       }
     }
 
@@ -354,6 +367,23 @@ void BMS::tick_drive_mode(){
           Serial.println(" V");
         #endif
       }
+    }
+
+    //After Volts and Temps, read stuff from the current sensor
+    IVTCurrentMeasureFrame_t current_frame = this->ivt->tick();
+
+    if(current_frame.success == 1){
+      #if DEBUG_CURRENT_VALUES
+        Serial.print("IVT Current: ");
+        Serial.print(current_frame.amps);
+        Serial.println(" A");
+      #endif
+      
+    }else{
+      #if DEBUG_CURRENT_VALUES
+        Serial.println("Coudln't read values from IVT Current sensor!");
+      #endif
+      critical_callback({DRIVE_MODE, 0, 0, 0xFFFFFFFF});
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++){

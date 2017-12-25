@@ -61,6 +61,7 @@ extern "C" {
   void output_low(uint8_t pin);
 }
 
+//Modified LTC68042 file to work in an immutable-object like manner with some configuration
 class LTC6804_2{
   public:
   LTC6804_2(LT_SPI * lt_spi,

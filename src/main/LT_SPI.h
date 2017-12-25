@@ -7,6 +7,7 @@ the teensy's  SPI capabilities. */
 #include <stdint.h>
 #include <SPI.h>
 
+//Modified LT_SPI to work in a manner of immutable object
 class LT_SPI{
   public:
     LT_SPI(uint8_t sck = SCK,

@@ -27,6 +27,23 @@
 
 #define MAX_MEASURE_CYCLE_DURATION_MS 500
 
+//Cells with index > CELL_IGNORE_INDEX will be ignored from measurements.
+//This is useful for cases where your cells on a module 
+//are < 12 (max number that the Battery Monitors can read)
+//Thus, you should ignore some. In this case we have got
+//each monitor observing 10 cells, thus the 11th and 12th 
+//are going to be ignored both from the open wire checks and
+//the measurements
+//Set to 12(Max Cells) in order to measure all
+#define CELL_IGNORE_INDEX_START 0
+#define CELL_IGNORE_INDEX_END 12
+
+//Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
+//sensors (or thermistors) are wired in. The monitors have 5 GPIOs
+//Set to 5(Max GPIOs) in order to measure all
+#define GPIO_IGNORE_INDEX_START 0
+#define GPIO_IGNORE_INDEX_END 5
+
 //This is the configuration that will be written to every slave while driving
 //REFON=1 -> Always awake
 //VUV (Undervoltage) & VOV (Overvoltage) Values
@@ -60,6 +77,7 @@ LT_SPI * lt_spi;
 LTC6804_2 * ltc;
 BMS * bms;
 IVT * ivt;
+//FlexCAN Can();
 
 //This is the entry point. loop() is called after
 void setup() {
@@ -72,16 +90,18 @@ void setup() {
   #if DEBUG
     Serial.begin(SERIAL_BAUD_RATE);
     delay(2000);
+    Serial.println("Initializing Can0");
   #endif
 
-  Can0.begin();
+  //Can.begin();
 
   lt_spi = new LT_SPI();
   ltc = new LTC6804_2(lt_spi);
-  ivt = new IVT();
+  ivt = new IVT_Dummy();
   bms = new BMS(ltc, ivt, SLAVE_NUM, charging == 1 ? CHARGE_MODE : DRIVE_MODE,
           VOV, VUV, TOT, TUT, 
           CELL_IGNORE_INDEX_START, CELL_IGNORE_INDEX_END, GPIO_IGNORE_INDEX_START, GPIO_IGNORE_INDEX_END,
+          drive_config,
           &critical_callback,
           &uint16_volts_to_float,
           &volts_to_celsius);
