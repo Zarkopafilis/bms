@@ -52,10 +52,13 @@ IVTCurrentMeasureFrame_t IVT::tick(){
   return {IVT_SUCCESS, val}; 
 }
 
-IVT_Dummy::IVT_Dummy(uint32_t val) : IVT(0xFFFF), val(val){}
+IVT_Dummy::IVT_Dummy(uint32_t val) : IVT(0xFFFF)
+{
+  this->val = val;  
+}
 
 IVTCurrentMeasureFrame_t IVT_Dummy::tick(){
-  return {IVT_SUCCESS, val};
+  return {IVT_SUCCESS, this->val};
 }
 
 void IVT_Dummy::update(CAN_message_t message){}

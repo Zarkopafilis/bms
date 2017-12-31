@@ -101,9 +101,11 @@ void setup() {
   #if DEBUG
     Serial.begin(SERIAL_BAUD_RATE);
     delay(2000);
-    Serial.println("Initializing Can0");
   #endif
 
+  #if DEBUG_CAN
+    Serial.println("Initializing FlexCAN");
+  #endif
   Can.begin();
 
   lt_spi = new LT_SPI();

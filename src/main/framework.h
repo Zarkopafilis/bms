@@ -57,8 +57,6 @@ class IVT_Dummy : public IVT {
     IVT_Dummy(uint32_t val);
     IVTCurrentMeasureFrame_t tick();
     void update(CAN_message_t message);
-  protected:
-  uint32_t val = 0;
 };
 
 //If volts = temp = 0 and mode != 1 | 2 => warning
