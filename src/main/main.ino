@@ -25,6 +25,10 @@
 //Number of LTC6811-2 Multicell battery monitors
 #define SLAVE_NUM 1
 
+//Index of the battery box, can be anything -- used only to send data metrics to the can bus
+//For now 0 => Left and 1 => Right
+#define BOX_ID 0
+
 #define MAX_MEASURE_CYCLE_DURATION_MS 500
 
 //Cells with index > CELL_IGNORE_INDEX will be ignored from measurements.
@@ -39,7 +43,7 @@
 #define CELL_IGNORE_INDEX_END 12
 
 //Same with CELL_IGNORE_INDEX, but for the GPIOs where the temperature
-//sensors (or thermistors) are wired in. The monitors have 5 GPIOs
+//Can_Sensors (or thermistors) are wired in. The monitors have 5 GPIOs
 //Set to 5(Max GPIOs) in order to measure all
 #define GPIO_IGNORE_INDEX_START 0
 #define GPIO_IGNORE_INDEX_END 5
@@ -77,7 +81,16 @@ LT_SPI * lt_spi;
 LTC6804_2 * ltc;
 BMS * bms;
 IVT * ivt;
-//FlexCAN Can();
+FlexCAN Can(500000);
+
+#define CAN_SENSOR_NUM 1
+Can_Sensor * can_sensors[]{
+  ivt
+};
+
+inline int charging(){
+  return digitalRead(CHARGE_PIN) != CHARGE_PIN_IDLE;
+}
 
 //This is the entry point. loop() is called after
 void setup() {
@@ -85,20 +98,18 @@ void setup() {
   digitalWrite(SHUTDOWN_PIN, SHUTDOWN_PIN_IDLE);
 
   pinMode(CHARGE_PIN, INPUT);
-  int charging = digitalRead(CHARGE_PIN) != CHARGE_PIN_IDLE;
-
   #if DEBUG
     Serial.begin(SERIAL_BAUD_RATE);
     delay(2000);
     Serial.println("Initializing Can0");
   #endif
 
-  //Can.begin();
+  Can.begin();
 
   lt_spi = new LT_SPI();
   ltc = new LTC6804_2(lt_spi);
-  ivt = new IVT_Dummy();
-  bms = new BMS(ltc, ivt, SLAVE_NUM, charging == 1 ? CHARGE_MODE : DRIVE_MODE,
+  ivt = new IVT_Dummy(1);
+  bms = new BMS(ltc, ivt, SLAVE_NUM,
           VOV, VUV, TOT, TUT, 
           CELL_IGNORE_INDEX_START, CELL_IGNORE_INDEX_END, GPIO_IGNORE_INDEX_START, GPIO_IGNORE_INDEX_END,
           drive_config,
@@ -122,6 +133,19 @@ void loop() {
     #endif
 
     measure_cycle_start = millis();
+    //Gather input from CAN -- there is a need to centralize this because you can't have multiple isntances reading all
+    //messages and only grabbing their own, if you read, you consume forever.
+    while(Can.available() == 1){
+      CAN_message_t msg;
+      Can.read(msg);
+
+      for(int i = 0; i < CAN_SENSOR_NUM; i++){
+        Can_Sensor * s = can_sensors[i];
+        if(msg.id == s->get_id()){
+          s->update(msg);
+        }
+      }
+    }
 
     //Tick BMS
     bms->tick();

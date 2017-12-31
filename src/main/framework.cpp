@@ -34,86 +34,53 @@ void output_high(uint8_t pin){
   digitalWrite(pin, HIGH);
 }
 
-IVT::IVT(FlexCAN * can) : can(can){}
+Can_Sensor::Can_Sensor(uint32_t id) : id(id){}
+
+uint32_t Can_Sensor::get_id(){ return this->id; }
+
+IVT::IVT(uint32_t id) : Can_Sensor(id){}
+
+void IVT::update(CAN_message_t message){
+      this->val = message.buf[2] << 24 | message.buf[3] << 16 | message.buf[4] << 8 | message.buf[5]; 
+}
 
 IVTCurrentMeasureFrame_t IVT::tick(){
-  IVTCurrentMeasureFrame_t fr = {0,0};
-  CAN_message_t message;
-  while(this->can->available()){
-    this->can->read(message);
-    if(message.id == IVT_CURRENT_CANID){
-      uint32_t val = message.buf[2] << 24;
-      val |= message.buf[3] << 16;
-      val |= message.buf[4] << 8;
-      val |= message.buf[5];
-      fr = {1, message.buf[2] << 24 | message.buf[3] << 16 | message.buf[4] << 8 | message.buf[5]}; 
-    }
+  if(old){
+    return {IVT_OLD_MEASUREMENT, val};
   }
-
-  if(fr.success == 1){
-    this->frame = fr;
-  }
-  return fr;
+  old = true;
+  return {IVT_SUCCESS, val}; 
 }
 
-IVT_Dummy::IVT_Dummy() : IVT(nullptr){}
+IVT_Dummy::IVT_Dummy(uint32_t val) : IVT(0xFFFF), val(val){}
 
 IVTCurrentMeasureFrame_t IVT_Dummy::tick(){
-  return (IVTCurrentMeasureFrame_t) {1,0};
+  return {IVT_SUCCESS, val};
 }
+
+void IVT_Dummy::update(CAN_message_t message){}
 
 BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
       uint8_t total_ic,
-      uint8_t mode,
       float overvolts,
       float undervolts,
       float overtemp,
       float undertemp,
       uint8_t cell_start, uint8_t cell_end,
       uint8_t aux_start, uint8_t aux_end,
-      const uint8_t drive_cfg[6],
+      const uint8_t conf[6],
       void (* critical_callback)(BmsCriticalFrame_t),
       float (* const uv_to_float)(uint16_t),
       float (* const v_to_celsius)(float, float)) :
         ltc(ltc), ivt(ivt), total_ic(total_ic),
         ov(overvolts), uv(undervolts), ot(overtemp), ut(undertemp),
         cell_start(cell_start), cell_end(cell_end), aux_start(aux_start), aux_end(aux_end),
-        drive_cfg(drive_cfg),
+        config(conf),
         critical_callback(critical_callback), uv_to_float(uv_to_float), v_to_celsius(v_to_celsius)
 {
   this->cell_codes = (uint16_t *) malloc(sizeof(uint16_t) * total_ic * (cell_end - cell_start));
   this->aux_codes = (uint16_t *) malloc(sizeof(uint16_t) * total_ic * (aux_end - aux_start));
   
-  switch(mode){
-    case DRIVE_MODE:
-      #if DEBUG
-        Serial.println("Setting up DRIVE Mode");
-      #endif
-      this->setup_drive_mode();
-      break;
-    case CHARGE_MODE:
-      #if DEBUG
-        Serial.println("Setting up CHARGE Mode");
-      #endif
-      this->setup_charge_mode();
-      break;
-    default:
-      #if DEBUG 
-        Serial.print("Invalid Mode -> ");
-        Serial.print(mode);
-        Serial.println("! Falling back to CHARGE mode...");
-      #endif
-      this->setup_charge_mode();
-      break;
-  }
-}
-
-BMS::~BMS(){
-  free(this->aux_codes);
-  free(this->cell_codes);
-}
-
-void BMS::setup_drive_mode(){
   #if DEBUG
     Serial.println("Writing configuration to slaves");
   #endif
@@ -124,7 +91,7 @@ void BMS::setup_drive_mode(){
 
   for(uint8_t i = 0; i < total_ic; i++){
     for(uint8_t j = 0; j < 6; j++){
-        cfg[i][j] = *(drive_cfg + j);
+        cfg[i][j] = *(config + j);
     }
   }
 
@@ -140,15 +107,11 @@ void BMS::setup_drive_mode(){
   //RDCFG Command
   int pec = ltc->rdcfg(total_ic, r_cfg);
 
-  if(pec == 0){
-    #if DEBUG_PEC
-      Serial.println("Slaves sent correct configuration back");
-    #endif
-  }else{
+  if(pec == -1){
     #if DEBUG_PEC
       Serial.print("Slaves failed to send correct configuration back!");
     #endif
-    critical_callback(critical_bms_error);
+    critical_callback(pec_bms_error);
   }
 
   for(uint8_t addr = 0; addr < total_ic; addr++){
@@ -157,7 +120,7 @@ void BMS::setup_drive_mode(){
     //No need to check the 2 PEC bytes again
     for (uint8_t i = 0; i < 6; i++){
       uint8_t b = r_cfg[addr][i];
-      check &= (b == *(drive_cfg + i));
+      check &= (b == *(config + i));
     }
 
     if(check == 0){
@@ -194,7 +157,7 @@ void BMS::setup_drive_mode(){
     #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to RDCV!");
     #endif
-    critical_callback(critical_bms_error);
+    critical_callback(pec_bms_error);
   }
 
   for(uint8_t addr = 0; addr < total_ic; addr++){
@@ -231,7 +194,7 @@ void BMS::setup_drive_mode(){
     #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to RDAUX!");
     #endif
-    critical_callback(critical_bms_error);
+    critical_callback(pec_bms_error);
   }
 
   for(uint8_t addr = 0; addr < total_ic; addr++){
@@ -244,7 +207,7 @@ void BMS::setup_drive_mode(){
           Serial.print(aux);
           Serial.println(" may have got a bit stuck (not 0xFFFF)!");
         #endif
-        critical_callback(critical_bms_error);
+        critical_callback(pec_bms_error);
       }
     }
   }
@@ -261,7 +224,7 @@ void BMS::setup_drive_mode(){
     #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to first demo measurement (cells)!");
     #endif
-    critical_callback(critical_bms_error);
+    critical_callback(pec_bms_error);
   }
 
   ltc->adax();
@@ -272,22 +235,27 @@ void BMS::setup_drive_mode(){
     #if DEBUG_PEC
       Serial.println("Slaves sent back incorrect response to first demo measurement (aux/temp)!");
     #endif
-    critical_callback(critical_bms_error);
+    critical_callback(pec_bms_error);
   }
 
   #if DEBUG
-    Serial.println("> Setup Complete...Entering Ready to Drive Mode in 2 Seconds!");
+    Serial.println("> Setup Complete...Starting in 2 Seconds!");
   #endif
 
   //Ensure that we get back correct measurements from the battery monitors on tick
   delay(2000);
 }
 
-void BMS::setup_charge_mode(){
-
+void BMS::set_cfg(const uint8_t cfg[6]){
+  this->config = cfg;
 }
 
-void BMS::tick_drive_mode(){
+BMS::~BMS(){
+  free(this->aux_codes);
+  free(this->cell_codes);
+}
+
+void BMS::tick(){
     uint16_t cell_codez[total_ic][12];
     uint16_t aux_codez[total_ic][6];
 
@@ -296,7 +264,7 @@ void BMS::tick_drive_mode(){
 
     for(uint8_t i = 0; i < total_ic; i++){
       for(uint8_t j = 0; j < 6; j++){
-          cfg[i][j] = *(drive_cfg + j);
+          cfg[i][j] = *(config + j);
       }
     }
 
@@ -369,7 +337,7 @@ void BMS::tick_drive_mode(){
       }
     }
 
-    //After Volts and Temps, read stuff from the current sensor
+    //After Volts and Temps, read stuff from the current Can_Sensor
     IVTCurrentMeasureFrame_t current_frame = this->ivt->tick();
 
     if(current_frame.success == 1){
@@ -381,9 +349,9 @@ void BMS::tick_drive_mode(){
       
     }else{
       #if DEBUG_CURRENT_VALUES
-        Serial.println("Coudln't read values from IVT Current sensor!");
+        Serial.println("Coudln't read values from IVT Current Can_Sensor!");
       #endif
-      critical_callback({DRIVE_MODE, 0, 0, 0xFFFFFFFF});
+      critical_callback(current_bms_error);
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++){
@@ -393,11 +361,7 @@ void BMS::tick_drive_mode(){
     }
     for(uint8_t addr = 0; addr < total_ic; addr++){
       for(uint8_t temp = 0; temp < (aux_end - aux_start); temp++){
-        *(aux_codes + addr * (aux_end - aux_start) + temp) = aux_codez[addr][temp + aux_start];
+        *(this->aux_codes + addr * (aux_end - aux_start) + temp) = aux_codez[addr][temp + aux_start];
       }
     }
-}
-
-void BMS::tick_charge_mode(){
-
 }

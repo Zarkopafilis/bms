@@ -22,65 +22,82 @@ float uint16_volts_to_float(uint16_t volts);
 #define IVT_CURRENT_CANID 0x521
 #endif
 
+#define IVT_SUCCESS 1
+#define IVT_OLD_MEASUREMENT -1
+
 typedef struct ivt_amps_frame{
-  int success;//1 for success, 0 for failure (no frames waiting)
+  int success;//see constants declared above
   uint32_t amps;
 } IVTCurrentMeasureFrame_t;
 
-//Dumb current measure sensor that returns measure frames and caches last successful measurement
-class IVT {
+//Parent class for all Can_Sensors that send data via can
+class Can_Sensor{
   public:
-    IVT(FlexCAN * can);
-    virtual IVTCurrentMeasureFrame_t tick();
-    //Last successful measurement frame
-    IVTCurrentMeasureFrame_t frame;
-
+    Can_Sensor(uint32_t id);
+    uint32_t get_id();
+    virtual void update(CAN_message_t message) = 0;
   protected:
-    FlexCAN * const can;  
+    const uint32_t id;
 };
 
-//This dummy ivt sensor only returns successful measurements of 0 amps
-class IVT_Dummy : public IVT{
+//Dumb current measure Can_Sensor that returns measure frames and caches last successful measurement
+class IVT : public Can_Sensor{
   public:
-    IVT_Dummy();
+    IVT(uint32_t id);
+    virtual IVTCurrentMeasureFrame_t tick();
+    void update(CAN_message_t message);
+  protected:
+    bool old = false;
+    //Last successful measurement frame
+    uint32_t val;
+};
+
+class IVT_Dummy : public IVT {
+  public:
+    IVT_Dummy(uint32_t val);
     IVTCurrentMeasureFrame_t tick();
+    void update(CAN_message_t message);
+  protected:
+  uint32_t val = 0;
 };
 
 //If volts = temp = 0 and mode != 1 | 2 => warning
 //If volts = temp = amps = -1 => critical error
-//If volts = temp = 0 , amps = -1 => sensor loss
+//If volts = temp = 0 , amps = -1 => Can_Sensor loss
 //Else, normal values indicate whats off-limit
 typedef struct bms_critical_frame {
-  uint8_t mode;
+  int mode;
   float volts;
   float temp;
   uint32_t amps;
 } BmsCriticalFrame_t;
 
-const BmsCriticalFrame_t critical_bms_error{0 , -1 , -1, 0xFFFFFFFF};
+const BmsCriticalFrame_t critical_bms_error{-10, -1 , -1, 0xFF};
+const BmsCriticalFrame_t pec_bms_error{-1, -1, -1, 0xFF};
+const BmsCriticalFrame_t current_bms_error{-2, 0, 0, 0xFF};
 
-//The actual,non-dumb BMS class. It monitors through the sensors (Currently LTC6804_2 and IVT). You need to plug in
+//The actual,non-dumb BMS class. It monitors through the Can_Sensors (Currently LTC6804_2 and IVT). You need to plug in
 //Some logic for it to work properly. All it does is to report values as a 'Critical BMS Frame'
 //The whole system works in a matter of 'ticks' as a dinstinct time frame. Previous values are cached.
 class BMS{
   public:
   BMS(LTC6804_2 * ltc, IVT * ivt,
       uint8_t total_ic,
-      uint8_t mode,
       float overvolts,
       float undervolts,
       float overtemp ,
       float undertemp,
       uint8_t cell_start, uint8_t cell_end,
       uint8_t aux_start, uint8_t aux_end,
-      const uint8_t drive_cfg[6],
+      const uint8_t conf[6],
       void (* critical_callback)(BmsCriticalFrame_t),
       float (* uv_to_float)(uint16_t),
       float (* v_to_celsius)(float, float));
 
   ~BMS();
 
-  void (*tick)();
+  void tick();
+  void set_cfg(const uint8_t conf[6]);
 
   uint16_t * cell_codes;
   uint16_t * aux_codes;
@@ -93,13 +110,7 @@ class BMS{
   const float ov, uv , ot, ut;
   const uint8_t cell_start, cell_end, aux_start, aux_end;
   
-  const uint8_t * drive_cfg;
-
-  void tick_charge_mode();
-  void tick_drive_mode();
-  
-  void setup_charge_mode();
-  void setup_drive_mode();
+  uint8_t const * config;
   
   void (* const critical_callback)(BmsCriticalFrame_t);
   float (* const uv_to_float)(uint16_t);
