@@ -7,20 +7,21 @@ the teensy's  SPI capabilities. */
 #include <stdint.h>
 #include <SPI.h>
 
-//Modified LT_SPI to work in a manner of immutable object
-class LT_SPI{
-  public:
+//Modified LTC68042 file to work in an immutable-object/sensor like manner by encapsulating some configuration as well
+class LT_SPI
+{
+public:
     LT_SPI(uint8_t sck = SCK,
-                uint8_t mosi = MOSI,
-                uint8_t miso = MISO,
-                uint8_t cs = SS,
-                uint8_t spi_clock_divider = SPI_CLOCK_DIV16,
-                uint8_t spi_mode = SPI_MODE3);
+           uint8_t mosi = MOSI,
+           uint8_t miso = MISO,
+           uint8_t cs = SS,
+           uint8_t spi_clock_divider = SPI_CLOCK_DIV16,
+           uint8_t spi_mode = SPI_MODE3);
     ~LT_SPI();
-    
+
     //Write a data byte
     void write(int8_t data);
-    
+
     //Read and write a data byte
     int8_t read(int8_t data);
 

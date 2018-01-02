@@ -1,3 +1,5 @@
+/* Only debug config is contained here. Please avoid putting actual configuration code and just
+   model everything in a proper OOP-like manner, passing config parameters in the constructor*/
 #ifndef CONFIG_H
 #define CONFIG_H
 
