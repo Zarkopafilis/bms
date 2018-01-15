@@ -5,31 +5,6 @@ importantly LTC60842 functions to make them work for teensy. */
 #include "framework.h"
 #include "config.h"
 
-/* Convert volts to celsius on a 10k thermistor, while given a reference voltage */
-float volts_to_celsius(float cell, float vref)
-{
-    float R10 = 10;
-    float R25 = 10;
-    float Aa = 0.003354016;
-    float Bb = 0.000256985;
-    float Cc = 2.62013 * 0.000001;
-    float Dd = 6.38309 * 0.00000001;
-
-    float vr = cell * 0.0001;
-
-    float r = -(vr * R10) / (vr - vref * 0.0001);
-    float T = Aa + Bb * log(r / R25) + Cc * log(r / R25) * log(r / R25) + Dd * log(r / R25) * log(r / R25) * log(r/R25);
-
-    float t = 1/T -272.15;
-    return t;
-}
-
-/* Scaling factor of measuremets */
-float uint16_volts_to_float(uint16_t volts)
-{
-    return volts * 0.0001;
-}
-
 void output_low(uint8_t pin)
 {
     digitalWrite(pin, LOW);
@@ -131,7 +106,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
 #if DEBUG_PEC
         Serial.print("Slaves failed to send correct configuration back!");
 #endif
-        critical_callback(pec_bms_error);
+        critical_callback(bms_pec_error);
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++)
@@ -152,7 +127,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
             Serial.print(addr);
             Serial.println(" was not properly configured!");
 #endif
-            critical_callback(critical_bms_error);
+            critical_callback(bms_critical_error);
         }
     }
 
@@ -181,7 +156,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
 #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to RDCV!");
 #endif
-        critical_callback(pec_bms_error);
+        critical_callback(bms_pec_error);
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++)
@@ -197,7 +172,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
                 Serial.print(cell);
                 Serial.println(" may have got a bit stuck (not 0xFFFF)!");
 #endif
-                critical_callback(critical_bms_error);
+                critical_callback(bms_critical_error);
             }
         }
     }
@@ -222,7 +197,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
 #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to RDAUX!");
 #endif
-        critical_callback(pec_bms_error);
+        critical_callback(bms_pec_error);
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++)
@@ -238,7 +213,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
                 Serial.print(aux);
                 Serial.println(" may have got a bit stuck (not 0xFFFF)!");
 #endif
-                critical_callback(pec_bms_error);
+                critical_callback(bms_pec_error);
             }
         }
     }
@@ -256,7 +231,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
 #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to first demo measurement (cells)!");
 #endif
-        critical_callback(pec_bms_error);
+        critical_callback(bms_pec_error);
     }
 
     ltc->adax();
@@ -268,7 +243,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
 #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to first demo measurement (aux/temp)!");
 #endif
-        critical_callback(pec_bms_error);
+        critical_callback(bms_pec_error);
     }
 
 #if DEBUG
@@ -322,7 +297,7 @@ void BMS::tick()
 #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to RDCV!");
 #endif
-        critical_callback(critical_bms_error);
+        critical_callback(bms_critical_error);
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++)
@@ -354,7 +329,7 @@ void BMS::tick()
 #if DEBUG_PEC
         Serial.println("Slaves sent back incorrect response to RDAUX!");
 #endif
-        critical_callback(critical_bms_error);
+        critical_callback(bms_critical_error);
     }
 
     for(uint8_t addr = 0; addr < total_ic; addr++)
@@ -402,7 +377,7 @@ void BMS::tick()
           Serial.println("IVT Current sensor loss!");
         }
 #endif
-        critical_callback(current_bms_error);
+        critical_callback(bms_current_error);
     }
 
     //Defensively copy the measurements just so they can be read only

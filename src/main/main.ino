@@ -79,6 +79,9 @@ const uint8_t charge_config[6] =
 void shut_car_down();
 void critical_callback(BmsCriticalFrame_t);
 
+float volts_to_celsius(float, float);
+float uint16_volts_to_float(uint16_t);
+
 LT_SPI * lt_spi;
 LTC6804_2 * ltc;
 BMS * bms;
@@ -97,6 +100,18 @@ Can_Sensor * can_sensors[]
 inline int isCharging()
 {
     return digitalRead(CHARGE_PIN) != CHARGE_PIN_IDLE;
+}
+
+static int prech = 0;
+
+inline int isPrecharging(){
+    return prech;
+}
+
+void precharge(){
+    prech = 1;
+
+    prech = 0;
 }
 
 //This is the entry point. loop() is called after
@@ -129,6 +144,8 @@ void setup()
                   &critical_callback,
                   &uint16_volts_to_float,
                   &volts_to_celsius);
+
+    precharge();
 }
 
 //Runs repeatedly after setup()
@@ -210,12 +227,63 @@ void loop()
    for example a measurement from a sensor that did not get updated for
    a BMS tick but that's going to get updated on < MAX_MEASURE_CYCLE_MS
    can be a critical frame (because it's an old measurement), but that
-   doesn't make it critical to shut the car down.*/
+   doesn't make it critical to shut the car down.
+   
+   This is where the actual logic happens, to shut down the car if something goes wrong
+   to properly charging the batteries and precharge.*/
 void critical_callback(BmsCriticalFrame_t frame)
 {
 #if DEBUG
-    Serial.println(">>> Critical BMS Frame");
+    Serial.print(">>> Critical BMS Frame : ");
 #endif
+
+    if(isPrecharging() == 1){
+
+    }else if(isCharging() == 0){ /* Drive mode */
+        switch(frame.mode){
+            case 0: /* Volts, Temps or Amps*/
+                if(frame.volts > 0){
+#if DEBUG
+                Serial.println(frame.volts);
+                Serial.println(" V");
+#endif
+                }else if(frame.temp > 0){
+#if DEBUG
+                Serial.println(frame.temp);
+                Serial.println(" C");
+#endif                
+                }else if(frame.amps > 0){
+#if DEBUG
+                Serial.println(frame.amps);
+                Serial.println(" A");
+#endif
+                }
+                break;
+            case bms_pec_error.mode:
+#if DEBUG
+                Serial.println("Possible LTC disconnect or malfunction (check for open wires, broken board, liquid damage, etc)");
+#endif      
+                break;
+            case bms_current_error.mode:
+#if DEBUG
+                Serial.println("Possible IVT Sensor malfunction (can't read data or data invalid/cached for too long)");
+#endif      
+                break;
+            case bms_critical_error.mode: /* Worse case scenario, where we don't know what happened exactly */
+#if DEBUG
+                Serial.println("Unknown critical error (generalized)!");
+#endif      
+                break;      
+            default: /* Should never end up here */
+#if DEBUG
+                Serial.println("Unrecognizable critical frame mode!");
+#endif
+                break;
+        }
+    }else{ /* Charging Mode */
+
+    }
+
     return;
     shut_car_down();
 }
@@ -235,3 +303,27 @@ void shut_car_down()
     }
 }
 
+/* Convert volts to celsius on a 10k thermistor, while given a reference voltage */
+float volts_to_celsius(float cell, float vref)
+{
+    float R10 = 10;
+    float R25 = 10;
+    float Aa = 0.003354016;
+    float Bb = 0.000256985;
+    float Cc = 2.62013 * 0.000001;
+    float Dd = 6.38309 * 0.00000001;
+
+    float vr = cell * 0.0001;
+
+    float r = -(vr * R10) / (vr - vref * 0.0001);
+    float T = Aa + Bb * log(r / R25) + Cc * log(r / R25) * log(r / R25) + Dd * log(r / R25) * log(r / R25) * log(r/R25);
+
+    float t = 1/T -272.15;
+    return t;
+}
+
+/* Scaling factor of measuremets */
+float uint16_volts_to_float(uint16_t volts)
+{
+    return volts * 0.0001;
+}

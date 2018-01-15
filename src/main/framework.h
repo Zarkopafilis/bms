@@ -14,10 +14,6 @@ importantly LTC60842 functions to make them work for teensy. */
 void output_low(uint8_t pin);
 void output_high(uint8_t pin);
 
-//10K Thermistor on VRef2 and GPIOx Pin
-float volts_to_celsius(float cell, float vref);
-float uint16_volts_to_float(uint16_t volts);
-
 #ifndef IVT_CURRENT_CANID
 #define IVT_CURRENT_CANID 0x521
 #endif
@@ -82,9 +78,9 @@ typedef struct bms_critical_frame
     uint32_t amps;
 } BmsCriticalFrame_t;
 
-const BmsCriticalFrame_t critical_bms_error{-10, -1, -1, 0xFF};
-const BmsCriticalFrame_t pec_bms_error{-1, -1, -1, 0xFF};
-const BmsCriticalFrame_t current_bms_error{-2, 0, 0, 0xFF};
+static constexpr BmsCriticalFrame_t bms_critical_error{-10, -1, -1, 0xFF};
+static constexpr BmsCriticalFrame_t bms_pec_error{-1, -1, -1, 0xFF};
+static constexpr BmsCriticalFrame_t bms_current_error{-2, 0, 0, 0xFF};
 
 //The actual,non-dumb BMS class. It monitors through the Can_Sensors (Currently LTC6804_2 and IVT). You need to plug in
 //Some logic for it to work properly. All it does is to report values as a 'Critical BMS Frame'
