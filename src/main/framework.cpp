@@ -15,39 +15,53 @@ void output_high(uint8_t pin)
     digitalWrite(pin, HIGH);
 }
 
-Can_Sensor::Can_Sensor(uint32_t id) : id(id) {}
-
-uint32_t Can_Sensor::get_id()
-{
-    return this->id;
-}
-
-IVT::IVT(uint32_t id) : Can_Sensor(id) {}
-
 void IVT::update(CAN_message_t message)
 {
-    this->val = message.buf[2] << 24 | message.buf[3] << 16 | message.buf[4] << 8 | message.buf[5];
-}
+    uint32_t val = message.buf[2] << 24 | message.buf[3] << 16 | message.buf[4] << 8 | message.buf[5];
+    float si = val * 0.001;
 
-IVTCurrentMeasureFrame_t IVT::tick()
-{
-    
-    if(old)
-    {
-        return {IVT_OLD_MEASUREMENT, val};
+    switch(message.id){
+        case IVT_CURRENT_CANID:
+            this->old_amps = false;
+            this->amps = si;
+            break;
+        case IVT_VOLTAGE_CANID:
+            this->old_volts = false;
+            this->volts = si;
+            break;
+        default:
+#if DEBUG
+            Serial.print("IVT Message ID: ");
+            Serial.print(message.id);
+            Serial.println(" not handled!");
+#endif
+            this->amps = 999;
+            this->volts = 999;
+            this->old_amps = true;
+            this->old_volts = true;
     }
-    old = true;
-    return {IVT_SUCCESS, val};
 }
 
-IVT_Dummy::IVT_Dummy(uint32_t val) : IVT(0xFFFF)
+uint32_t const * IVT::get_ids(){ return this->ids; }
+uint32_t IVT::get_id_num(){ return IVT::id_num; }
+
+IVTMeasureFrame_t IVT::tick()
 {
-    this->val = val;
+    if(this->old_amps || this->old_volts)
+    {
+        return {IVT_OLD_MEASUREMENT, this->amps, this->volts};
+    }
+
+    this->old_amps = true;
+    this->old_volts = true;
+    return {IVT_OLD_MEASUREMENT, this->amps, this->volts};
 }
 
-IVTCurrentMeasureFrame_t IVT_Dummy::tick()
+IVT_Dummy::IVT_Dummy(float amps, float volts) : amps(amps), volts(volts){}
+
+IVTMeasureFrame_t IVT_Dummy::tick()
 {
-    return {IVT_SUCCESS, this->val};
+    return {IVT_SUCCESS, this->amps, this->volts};
 }
 
 void IVT_Dummy::update(CAN_message_t message) {}
@@ -357,7 +371,7 @@ void BMS::tick()
     }
 
     //After Volts and Temps, read stuff from the current Can_Sensor
-    IVTCurrentMeasureFrame_t current_frame = this->ivt->tick();
+    IVTMeasureFrame_t current_frame = this->ivt->tick();
 
     if(current_frame.success == IVT_SUCCESS)
     {

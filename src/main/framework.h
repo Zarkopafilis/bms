@@ -18,25 +18,29 @@ void output_high(uint8_t pin);
 #define IVT_CURRENT_CANID 0x521
 #endif
 
+#ifndef IVT_VOLTAGE_CANID
+#define IVT_VOLTAGE_CANID 0x522
+#endif
+
 #define IVT_SUCCESS 1
 #define IVT_OLD_MEASUREMENT -1
 
-typedef struct ivt_amps_frame
+typedef struct ivt_measure_frame
 {
     int success;//see constants declared above
-    uint32_t amps;
-} IVTCurrentMeasureFrame_t;
+    float amps;
+    float volts;
+} IVTMeasureFrame_t;
 
 //Interface for all Can_Sensors that send data via can
 //Should handle message updating and/or caching on the underlying implementation
 class Can_Sensor
 {
 public:
-    Can_Sensor(uint32_t id);
-    uint32_t get_id();
     virtual void update(CAN_message_t message) = 0;
-protected:
-    const uint32_t id;
+
+    virtual uint32_t const * get_ids() = 0;
+    virtual uint32_t get_id_num() = 0;
 };
 
 //Current measure Can_Sensor that returns measure frames
@@ -44,13 +48,21 @@ protected:
 class IVT : public Can_Sensor
 {
 public:
-    IVT(uint32_t id);
-    virtual IVTCurrentMeasureFrame_t tick();
+    virtual IVTMeasureFrame_t tick();
     void update(CAN_message_t message);
+
+    uint32_t const * get_ids();
+    uint32_t get_id_num();
+
 protected:
-    bool old = false;
+    bool old_amps = false;
+    bool old_volts = false;
     //Last successful measurement frame
-    uint32_t val;
+    float amps = 0;
+    float volts = 0;
+
+    static const uint32_t id_num = 2;
+    const uint32_t ids[id_num] = {IVT_CURRENT_CANID, IVT_VOLTAGE_CANID};
 };
 
 //Dummy/Fake IVT sensor that always returns the value provided on
@@ -58,9 +70,12 @@ protected:
 class IVT_Dummy : public IVT
 {
 public:
-    IVT_Dummy(uint32_t val);
-    IVTCurrentMeasureFrame_t tick();
+    IVT_Dummy(float amps, float volts);
+    IVTMeasureFrame_t tick();
     void update(CAN_message_t message);
+    private:
+        const float amps;
+        const float volts;
 };
 
 //If volts = temp = 0 and mode != 1 | 2 => warning
@@ -109,7 +124,6 @@ public:
     uint16_t * cell_codes;
     uint16_t * aux_codes;
 
-protected:
     LTC6804_2 * const ltc;
     IVT * const ivt;
 

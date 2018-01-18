@@ -135,7 +135,7 @@ void setup()
        They are modelled properly as classes in framework.h*/
     lt_spi = new LT_SPI();
     ltc = new LTC6804_2(lt_spi);
-    ivt = new IVT_Dummy(1);
+    ivt = new IVT_Dummy(2, 500);
     
     bms = new BMS(ltc, ivt, SLAVE_NUM,
                   VOV, VUV, TOT, TUT,
@@ -173,13 +173,17 @@ void loop()
             Can.read(msg);
             /* For every sensor declared, update it with the new message, if IDs match
                BMS needs new sensor data, this is why it's done first.*/
-            for(int i = 0; i < CAN_SENSOR_NUM; i++)
+            for(uint32_t i = 0; i < CAN_SENSOR_NUM; i++)
             {
                 Can_Sensor * s = can_sensors[i];
-                if(msg.id == s->get_id())
-                {
-                    s->update(msg);
-                }
+
+                for(uint32_t j = 0; j < s->get_id_num(); j++){
+                    if(msg.id == *(s->get_ids() + j))
+                    {
+                        s->update(msg);
+                        break;
+                    }
+                }  
             }
         }
 
