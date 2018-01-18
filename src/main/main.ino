@@ -4,7 +4,28 @@
 
 #define SERIAL_BAUD_RATE 9600
 
+//Index of the battery box, can be anything
+//Used only to send data metrics to the can bus as the first byte of the bms messages
+#define BOX_LEFT 0
+#define BOX_RIGHT 1
+#define BOX_ID BOX_LEFT;
+
 /* Values for isCharging mode may be different; these are for drive mode */
+
+#define SHUTDOWN_ERROR_CANID 0x600
+
+/* Can Message Layout on shutdown */
+// buf[7] => First bit is for left or right battery box, other 6 for the error code
+// buf[6 ~ 3] => Value (mV, mA, oC [-127 ~ 127])
+// buf[2 ~ 0] => Index (If any) 
+
+#define ERROR_UNKNOWN_CRITICAL 0
+#define ERROR_LTC_LOSS 1 /* Pec is wrong */
+#define ERROR_IVT_LOSS 2 /* No new IVT measurements on period (possible sensor loss) */
+#define ERROR_VOLTS 3 /* Probably never happens in drive mode */
+#define ERROR_AMPS 4 /* Overcurrent */
+#define ERROR_TEMP 5 /* Too Cold / Too Hot */
+#define ERROR_MAX_MEASURE_DURATION 6 /* > 500mS loop time */
 
 //Names of some constants are like this in order to be the same
 //with the LTC6804 datasheet
@@ -29,12 +50,6 @@
 //Number of LTC6811-2 Multicell battery monitors
 //When setting up, make sure that id's start from 0 and go up by increments of 1
 #define SLAVE_NUM 1
-
-//Index of the battery box, can be anything
-//Used only to send data metrics to the can bus as the first byte of the bms messages
-#define BOX_LEFT 0
-#define BOX_RIGHT 1
-const byte BOX_ID = BOX_LEFT;
 
 //Any duration bigger than this is going to shut the car down
 #define MAX_MEASURE_CYCLE_DURATION_MS 500
@@ -190,6 +205,8 @@ void loop()
         //Tick BMS
         bms->tick();
 
+        Can.write(Liion_Bms_Can_Adapter::VoltageMinMax(bms));
+
         measure_cycle_end = millis();
 
         uint32_t measure_cycle_duration = measure_cycle_end - measure_cycle_start;
@@ -293,6 +310,8 @@ void critical_callback(BmsCriticalFrame_t frame)
 }
 
 /* Actual car shut down code */
+// The periodic can message contains a uint32_t in the first 4 byte parts of the array
+// That's the error code being transmitted. Look at the top of the file to check what's what
 void shut_car_down()
 {
 #if DEBUG
@@ -300,9 +319,16 @@ void shut_car_down()
 #endif
 
     digitalWrite(SHUTDOWN_PIN, SHUTDOWN_PIN_IDLE == 1 ? 0 : 1);
+    
+    unsigned long lastRefreshTime = millis();
 
     while(1)
-    {
+    {   
+//        unsigned long nowRefreshTime = millis();
+//        if(nowRefreshTime - lastRefreshTime >= 1000){
+//          lastRefreshTime = nowRefreshTime;
+//          Can.write(periodic);
+//        }
         //Loop endlessly in chaos
     }
 }

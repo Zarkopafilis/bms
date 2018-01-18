@@ -85,7 +85,7 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
     critical_callback(critical_callback), uv_to_float(uv_to_float), v_to_celsius(v_to_celsius)
 {
     this->cell_codes = (uint16_t *) malloc(sizeof(uint16_t) * total_ic * (cell_end - cell_start));
-    this->aux_codes = (uint16_t *) malloc(sizeof(uint16_t) * total_ic * (aux_end - aux_start));
+    this->aux_codes = (uint16_t *) malloc(sizeof(uint16_t) * total_ic * (aux_end - aux_start + 1));
 
 #if DEBUG
     Serial.println("Writing configuration to slaves");
@@ -268,6 +268,46 @@ BMS::BMS(LTC6804_2 * ltc, IVT * ivt,
     delay(2000);
 }
 
+Float_Index_Tuple_t BMS::get_volts(bool greater){
+  uint16_t target_volts = *(cell_codes);
+  uint8_t index = 0;
+  for(uint8_t slave = 0; slave < total_ic; slave++){
+    for(uint8_t cell = cell_start; cell < cell_end; cell++){
+        uint16_t volts = *(cell_codes + slave * (cell_end - cell_start) + cell);
+        if((volts > target_volts) == greater){
+          target_volts = volts;
+          index = slave * (cell_start - cell_end) + cell;
+        }
+    }
+  }
+  return Float_Index_Tuple_t{ uv_to_float(target_volts) ,index};
+}
+
+Float_Index_Tuple_t BMS::get_temp(bool greater){
+  uint16_t target_temp = *(aux_codes);
+  uint16_t target_vref = *(aux_codes + 5);
+  uint8_t index = 0;
+  for(uint8_t slave = 0; slave < total_ic; slave++){
+    uint16_t vref = *(aux_codes + slave * (aux_end - aux_start) + 5);
+    for(uint8_t aux = aux_start; aux < aux_end; aux++){  
+        uint16_t temp = *(aux_codes + slave * (aux_end - aux_start) + aux);
+        if((temp > target_temp) == greater){
+          target_temp = temp;
+          target_vref = vref;
+          index = slave * (aux_end - aux_start) + aux;
+        }
+    }
+  }
+  return Float_Index_Tuple_t{ v_to_celsius(uv_to_float(target_temp), uv_to_float(target_vref)) ,index};
+}
+
+Float_Index_Tuple_t BMS::get_min_volts(){ return get_volts(false); }
+Float_Index_Tuple_t BMS::get_max_volts(){ return get_volts(true); }
+ 
+Float_Index_Tuple_t BMS::get_min_temp(){ return get_temp(false); }
+Float_Index_Tuple_t BMS::get_max_temp(){ return get_temp(true); }
+
+
 void BMS::set_cfg(const uint8_t cfg[6])
 {
     this->config = cfg;
@@ -404,9 +444,22 @@ void BMS::tick()
     }
     for(uint8_t addr = 0; addr < total_ic; addr++)
     {
-        for(uint8_t temp = 0; temp < (aux_end - aux_start); temp++)
+        for(uint8_t temp = 0; temp < (aux_end - aux_start + 1); temp++) // +1 to include VRef
         {
-            *(this->aux_codes + addr * (aux_end - aux_start) + temp) = aux_codez[addr][temp + aux_start];
+            *(this->aux_codes + addr * (aux_end - aux_start + 1) + temp) = aux_codez[addr][temp + aux_start];
         }
     }
 }
+
+CAN_message_t Liion_Bms_Can_Adapter::VoltageMinMax(BMS * bms){
+  CAN_message_t msg;
+  msg.id = LIION_START_CANID + LIION_VOLT_MIN_MAX_OFFSET;
+
+  Float_Index_Tuple_t min = bms->get_min_volts();
+  
+  msg.buf[2] = min.index;
+  msg.buf[3] = ((uint16_t)min.value * 100) & 0xFF; // Set to mV and keep only 8 LSBs
+  
+  return msg;
+}
+

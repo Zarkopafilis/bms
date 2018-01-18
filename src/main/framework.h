@@ -14,12 +14,21 @@ importantly LTC60842 functions to make them work for teensy. */
 void output_low(uint8_t pin);
 void output_high(uint8_t pin);
 
+// Look at http://liionbms.com/php/standards.php
+#if BOXID == BOX_LEFT
+  #define LIION_START_CANID 0x64D
+#else
+  #define LIION_START_CANID 0x61D
+#endif
+
+#define LIION_VOLT_MIN_MAX_OFFSET 3
+
 #ifndef IVT_CURRENT_CANID
-#define IVT_CURRENT_CANID 0x521
+  #define IVT_CURRENT_CANID 0x521
 #endif
 
 #ifndef IVT_VOLTAGE_CANID
-#define IVT_VOLTAGE_CANID 0x522
+  #define IVT_VOLTAGE_CANID 0x522
 #endif
 
 #define IVT_SUCCESS 1
@@ -97,6 +106,11 @@ static constexpr BmsCriticalFrame_t bms_critical_error{-10, -1, -1, 0xFF};
 static constexpr BmsCriticalFrame_t bms_pec_error{-1, -1, -1, 0xFF};
 static constexpr BmsCriticalFrame_t bms_current_error{-2, 0, 0, 0xFF};
 
+typedef struct float_index_tuple{
+  float value;
+  uint8_t index;
+} Float_Index_Tuple_t;
+
 //The actual,non-dumb BMS class. It monitors through the Can_Sensors (Currently LTC6804_2 and IVT). You need to plug in
 //Some logic for it to work properly. All it does is to report values as a 'Critical BMS Frame'
 //The whole system works in a matter of 'ticks' as a dinstinct time frame. Previous values are cached.
@@ -136,6 +150,23 @@ public:
     void (* const critical_callback)(BmsCriticalFrame_t);
     float (* const uv_to_float)(uint16_t);
     float (* const v_to_celsius)(float, float);
+
+    /* The following return the min/max value along with the index of it [slave * (range) + slot] */
+    Float_Index_Tuple_t get_volts(bool greater);
+    Float_Index_Tuple_t get_temp(bool greater);
+
+    Float_Index_Tuple_t get_min_volts();
+    Float_Index_Tuple_t get_max_volts();
+    
+    Float_Index_Tuple_t get_min_temp();
+    Float_Index_Tuple_t get_max_temp();
+};
+
+//Drop in replacement for http://liionbms.com/php/standards.php
+//Produces can messages by using the Bms
+class Liion_Bms_Can_Adapter{
+  public:
+    static CAN_message_t VoltageMinMax(BMS * bms);
 };
 
 #endif //FRAMEWORK_H
