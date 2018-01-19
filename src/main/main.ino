@@ -103,6 +103,8 @@ BMS * bms;
 IVT * ivt;
 FlexCAN Can(500000);
 
+Charger * charger;
+
 //Collection of all the Can_Sensors that are going
 //to be pinged whenever there is a new message
 //matching their id
@@ -159,6 +161,9 @@ void setup()
                   &critical_callback,
                   &uint16_volts_to_float,
                   &volts_to_celsius);
+
+    charger = new Charger_Dummy();
+    //charger = new Charger(&Can, 0, 0);
 
     precharge();
 }

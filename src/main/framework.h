@@ -23,6 +23,8 @@ void output_high(uint8_t pin);
 
 #define LIION_VOLT_MIN_MAX_OFFSET 3
 
+#define CHARGER_COMMAND_CANID 0x618
+
 #ifndef IVT_CURRENT_CANID
   #define IVT_CURRENT_CANID 0x521
 #endif
@@ -145,8 +147,11 @@ public:
     const float ov, uv, ot, ut;
     const uint8_t cell_start, cell_end, aux_start, aux_end;
 
-    uint8_t const * config;
+    protected:
+      uint8_t const * config;
 
+    public:
+    
     void (* const critical_callback)(BmsCriticalFrame_t);
     float (* const uv_to_float)(uint16_t);
     float (* const v_to_celsius)(float, float);
@@ -167,6 +172,31 @@ public:
 class Liion_Bms_Can_Adapter{
   public:
     static CAN_message_t VoltageMinMax(BMS * bms);
+};
+
+// Accepts configuration 
+//and sends out proper can messages to the actual charger
+class Charger{
+  public:
+    Charger(FlexCAN * can, uint16_t initial_volts, uint16_t initial_amps);
+
+    virtual void send_charge_message();
+
+    void set_volts(uint16_t v);
+    void set_amps(uint16_t a);
+    void set_volts_amps(uint16_t v, uint16_t a);
+    
+  protected:
+    FlexCAN * const can;
+    uint16_t volts = 0;
+    uint16_t amps = 0;
+};
+
+class Charger_Dummy : public Charger{
+  public: 
+    Charger_Dummy();
+  
+    void send_charge_message(); 
 };
 
 #endif //FRAMEWORK_H

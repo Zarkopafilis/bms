@@ -463,3 +463,36 @@ CAN_message_t Liion_Bms_Can_Adapter::VoltageMinMax(BMS * bms){
   return msg;
 }
 
+Charger::Charger(FlexCAN * can, uint16_t initial_volts, uint16_t initial_amps) : can(can), volts(initial_volts), amps(initial_amps) {}
+
+void Charger::send_charge_message(){
+  CAN_message_t msg;
+  msg.id = CHARGER_COMMAND_CANID;
+  msg.buf[7] = 0x80;
+  msg.buf[6] = 0x01;
+  msg.buf[5] = 0xF4;
+
+  //Volts (SI resolution)
+  msg.buf[4] = (volts >> 8) & 0xFF;
+  msg.buf[3] = volts & 0xFF;
+
+  //Amps (0.1 resolution)
+  uint16_t send_amps = amps * 10;
+  msg.buf[2] = (send_amps >> 8) & 0xFF;
+  msg.buf[1] = send_amps & 0xFF;
+
+  this->can->write(msg);
+}
+
+void Charger::set_volts(uint16_t v){ this->volts = v; }
+void Charger::set_amps(uint16_t a){ this->amps = a; }
+void Charger::set_volts_amps(uint16_t v, uint16_t a)
+{
+  set_volts(v);
+  set_amps(a);  
+}
+
+Charger_Dummy::Charger_Dummy() : Charger(nullptr, 0 , 0){}
+
+void Charger_Dummy::send_charge_message(){}
+
