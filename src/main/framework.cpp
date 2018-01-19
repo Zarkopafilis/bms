@@ -458,7 +458,7 @@ CAN_message_t Liion_Bms_Can_Adapter::VoltageMinMax(BMS * bms){
   Float_Index_Tuple_t min = bms->get_min_volts();
   
   msg.buf[2] = min.index;
-  msg.buf[3] = ((uint16_t)min.value * 100) & 0xFF; // Set to mV and keep only 8 LSBs
+  msg.buf[3] = ((uint16_t) (bms->uv_to_float(min.value) *  10)); // Set to 100mV resolution
   
   return msg;
 }
