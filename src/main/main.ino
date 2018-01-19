@@ -268,17 +268,17 @@ void critical_callback(BmsCriticalFrame_t frame)
     }else if(isCharging() == 0){ /* Drive mode */
         switch(frame.mode){
             case 0: /* Volts, Temps or Amps*/
-                if(frame.volts > 0){
+                if(frame.volts.value > 0){
 #if DEBUG
                 Serial.println(frame.volts);
                 Serial.println(" V");
 #endif
-                }else if(frame.temp > 0){
+                }else if(frame.temp.value > 0){
 #if DEBUG
                 Serial.println(frame.temp);
                 Serial.println(" C");
 #endif                
-                }else if(frame.amps > 0){
+                }else if(frame.amps.value > 0){
 #if DEBUG
                 Serial.println(frame.amps);
                 Serial.println(" A");

@@ -89,6 +89,13 @@ public:
         const float volts;
 };
 
+typedef struct float_index_tuple{
+  float value;
+  uint8_t index;
+} Float_Index_Tuple_t;
+
+static constexpr Float_Index_Tuple_t empty_float_index = {0,0};
+
 //If volts = temp = 0 and mode != 1 | 2 => warning
 //If volts = temp = amps = -1 => critical error
 //If volts = temp = 0 , amps = -1 => Can_Sensor loss
@@ -99,19 +106,14 @@ public:
 typedef struct bms_critical_frame
 {
     int mode;
-    float volts;
-    float temp;
-    uint32_t amps;
+    Float_Index_Tuple_t volts;
+    Float_Index_Tuple_t temp;
+    Float_Index_Tuple_t amps;
 } BmsCriticalFrame_t;
 
-static constexpr BmsCriticalFrame_t bms_critical_error{-10, -1, -1, 0xFF};
-static constexpr BmsCriticalFrame_t bms_pec_error{-1, -1, -1, 0xFF};
-static constexpr BmsCriticalFrame_t bms_current_error{-2, 0, 0, 0xFF};
-
-typedef struct float_index_tuple{
-  float value;
-  uint8_t index;
-} Float_Index_Tuple_t;
+static constexpr BmsCriticalFrame_t bms_critical_error{-10, empty_float_index, empty_float_index, empty_float_index};
+static constexpr BmsCriticalFrame_t bms_pec_error{-1, empty_float_index, empty_float_index, empty_float_index};
+static constexpr BmsCriticalFrame_t bms_current_error{-2, empty_float_index, empty_float_index, empty_float_index};
 
 //The actual,non-dumb BMS class. It monitors through the Can_Sensors (Currently LTC6804_2 and IVT). You need to plug in
 //Some logic for it to work properly. All it does is to report values as a 'Critical BMS Frame'
