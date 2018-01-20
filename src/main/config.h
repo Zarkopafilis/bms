@@ -13,4 +13,6 @@
 //Only takes effect when DEBUG = 1
 #define MEASURE_CYCLE_DEBUG_DELAY_MS 100
 
+#define CAN_ENABLE 0
+
 #endif //CONFIG_H

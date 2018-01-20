@@ -4,28 +4,7 @@
 
 #define SERIAL_BAUD_RATE 9600
 
-//Index of the battery box, can be anything
-//Used only to send data metrics to the can bus as the first byte of the bms messages
-#define BOX_LEFT 0
-#define BOX_RIGHT 1
-#define BOX_ID BOX_LEFT;
-
 /* Values for isCharging mode may be different; these are for drive mode */
-
-#define SHUTDOWN_ERROR_CANID 0x600
-
-/* Can Message Layout on shutdown */
-// buf[7] => First bit is for left or right battery box, other 6 for the error code
-// buf[6 ~ 3] => Value (mV, mA, oC [-127 ~ 127])
-// buf[2 ~ 0] => Index (If any) 
-
-#define ERROR_UNKNOWN_CRITICAL 0
-#define ERROR_LTC_LOSS 1 /* Pec is wrong */
-#define ERROR_IVT_LOSS 2 /* No new IVT measurements on period (possible sensor loss) */
-#define ERROR_VOLTS 3 /* Probably never happens in drive mode */
-#define ERROR_AMPS 4 /* Overcurrent */
-#define ERROR_TEMP 5 /* Too Cold / Too Hot */
-#define ERROR_MAX_MEASURE_DURATION 6 /* > 500mS loop time */
 
 //Names of some constants are like this in order to be the same
 //with the LTC6804 datasheet
@@ -91,7 +70,7 @@ const uint8_t charge_config[6] =
     0B00000000 //DCTO[3~0] DCC 12~9
 };
 
-void shut_car_down();
+void shut_car_down(CAN_message_t);
 void critical_callback(BmsCriticalFrame_t);
 
 float volts_to_celsius(float, float);
@@ -146,14 +125,21 @@ void setup()
 #if DEBUG_CAN
     Serial.println("Starting FlexCAN");
 #endif
+
+#if CAN_ENABLE
     Can.begin();
+#endif 
 
     /* Initialize all the sensors and external hardware as needed.
        They are modelled properly as classes in framework.h*/
     lt_spi = new LT_SPI();
     ltc = new LTC6804_2(lt_spi);
-    ivt = new IVT_Dummy(2, 500);
     
+#if CAN_ENABLE
+    ivt = new IVT();
+#else
+    ivt = new IVT_Dummy(2, 500);
+#endif
     bms = new BMS(ltc, ivt, SLAVE_NUM,
                   VOV, VUV, TOT, TUT,
                   CELL_IGNORE_INDEX_START, CELL_IGNORE_INDEX_END, GPIO_IGNORE_INDEX_START, GPIO_IGNORE_INDEX_END,
@@ -185,6 +171,8 @@ void loop()
 #endif
 
         measure_cycle_start = millis();
+
+#if CAN_ENABLE
         //Gather input from CAN -- there is a need to centralize this because you can't have multiple isntances reading all
         //messages and only grabbing their own, if you read a message, you consume it forever.
         while(Can.available() == 1)
@@ -206,11 +194,14 @@ void loop()
                 }  
             }
         }
+#endif
 
         //Tick BMS
         bms->tick();
 
+#if CAN_ENABLE
         Can.write(Liion_Bms_Can_Adapter::VoltageMinMax(bms));
+#endif 
 
         measure_cycle_end = millis();
 
@@ -244,7 +235,7 @@ void loop()
             Serial.print(MAX_MEASURE_CYCLE_DURATION_MS);
             Serial.println(" ms. Shutting car down!");
 #endif
-            shut_car_down();
+            shut_car_down(Shutdown_Message_Factory::simple(ERROR_MAX_MEASURE_DURATION));
         }
     }
 }
@@ -270,35 +261,47 @@ void critical_callback(BmsCriticalFrame_t frame)
             case 0: /* Volts, Temps or Amps*/
                 if(frame.volts.value > 0){
 #if DEBUG
-                Serial.println(frame.volts);
-                Serial.println(" V");
+                  Serial.println(frame.volts.value);
+                  Serial.println(" V");
 #endif
+
+                  uint32_t mv = frame.volts.value * 1000;
+                  shut_car_down(Shutdown_Message_Factory::full(ERROR_VOLTS, mv, frame.volts.index));
                 }else if(frame.temp.value > 0){
 #if DEBUG
-                Serial.println(frame.temp);
-                Serial.println(" C");
+                  Serial.println(frame.temp.value);
+                  Serial.println(" C");
 #endif                
+                  
+                  uint32_t celsius = frame.temp.value;
+                  shut_car_down(Shutdown_Message_Factory::full(ERROR_TEMP, celsius, frame.temp.index));
                 }else if(frame.amps.value > 0){
 #if DEBUG
-                Serial.println(frame.amps);
-                Serial.println(" A");
+                  Serial.println(frame.amps.value);
+                  Serial.println(" A");
 #endif
+  
+                  uint32_t ma = frame.amps.value * 1000;
+                  shut_car_down(Shutdown_Message_Factory::full(ERROR_TEMP, ma, frame.amps.index));
                 }
                 break;
             case bms_pec_error.mode:
 #if DEBUG
                 Serial.println("Possible LTC disconnect or malfunction (check for open wires, broken board, liquid damage, etc)");
 #endif      
+                shut_car_down(Shutdown_Message_Factory::simple(ERROR_LTC_LOSS));
                 break;
             case bms_current_error.mode:
 #if DEBUG
                 Serial.println("Possible IVT Sensor malfunction (can't read data or data invalid/cached for too long)");
 #endif      
+                shut_car_down(Shutdown_Message_Factory::simple(ERROR_IVT_LOSS));
                 break;
             case bms_critical_error.mode: /* Worse case scenario, where we don't know what happened exactly */
 #if DEBUG
                 Serial.println("Unknown critical error (generalized)!");
 #endif      
+                shut_car_down(Shutdown_Message_Factory::simple(ERROR_UNKNOWN_CRITICAL));
                 break;      
             default: /* Should never end up here */
 #if DEBUG
@@ -311,13 +314,11 @@ void critical_callback(BmsCriticalFrame_t frame)
     }
 
     return;
-    shut_car_down();
+    shut_car_down(Shutdown_Message_Factory::simple(ERROR_UNKNOWN_CRITICAL));
 }
 
 /* Actual car shut down code */
-// The periodic can message contains a uint32_t in the first 4 byte parts of the array
-// That's the error code being transmitted. Look at the top of the file to check what's what
-void shut_car_down()
+void shut_car_down(CAN_message_t periodic)
 {
 #if DEBUG
     Serial.println(">>>> SHUTTING CAR DOWN <<<<");
@@ -329,11 +330,14 @@ void shut_car_down()
 
     while(1)
     {   
-//        unsigned long nowRefreshTime = millis();
-//        if(nowRefreshTime - lastRefreshTime >= 1000){
-//          lastRefreshTime = nowRefreshTime;
-//          Can.write(periodic);
-//        }
+        unsigned long nowRefreshTime = millis();
+        if(nowRefreshTime - lastRefreshTime >= 1000){
+          lastRefreshTime = nowRefreshTime;
+
+#if CAN_ENABLED
+          Can.write(periodic);
+#endif          
+        }
         //Loop endlessly in chaos
     }
 }

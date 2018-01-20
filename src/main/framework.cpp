@@ -454,6 +454,7 @@ void BMS::tick()
 CAN_message_t Liion_Bms_Can_Adapter::VoltageMinMax(BMS * bms){
   CAN_message_t msg;
   msg.id = LIION_START_CANID + LIION_VOLT_MIN_MAX_OFFSET;
+  msg.len = 8;
 
   Float_Index_Tuple_t min = bms->get_min_volts();
   
@@ -468,18 +469,20 @@ Charger::Charger(FlexCAN * can, uint16_t initial_volts, uint16_t initial_amps) :
 void Charger::send_charge_message(){
   CAN_message_t msg;
   msg.id = CHARGER_COMMAND_CANID;
-  msg.buf[7] = 0x80;
-  msg.buf[6] = 0x01;
-  msg.buf[5] = 0xF4;
+  msg.len = 8;
+  
+  msg.buf[6] = 0x80;
+  msg.buf[5] = 0x01;
+  msg.buf[4] = 0xF4;
 
   //Volts (SI resolution)
-  msg.buf[4] = (volts >> 8) & 0xFF;
-  msg.buf[3] = volts & 0xFF;
+  msg.buf[3] = (volts >> 8) & 0xFF;
+  msg.buf[2] = volts & 0xFF;
 
   //Amps (0.1 resolution)
   uint16_t send_amps = amps * 10;
-  msg.buf[2] = (send_amps >> 8) & 0xFF;
-  msg.buf[1] = send_amps & 0xFF;
+  msg.buf[1] = (send_amps >> 8) & 0xFF;
+  msg.buf[0] = send_amps & 0xFF;
 
   this->can->write(msg);
 }
@@ -495,4 +498,46 @@ void Charger::set_volts_amps(uint16_t v, uint16_t a)
 Charger_Dummy::Charger_Dummy() : Charger(nullptr, 0 , 0){}
 
 void Charger_Dummy::send_charge_message(){}
+
+CAN_message_t Shutdown_Message_Factory::simple(uint8_t error){
+  CAN_message_t msg;
+  msg.id = SHUTDOWN_ERROR_CANID;
+  msg.len = 8;
+
+  msg.buf[7] = error + ERROR_OFFSET;
+  
+  return msg;
+}
+
+CAN_message_t Shutdown_Message_Factory::data(uint8_t error, uint32_t data){
+  CAN_message_t msg;
+  msg.id = SHUTDOWN_ERROR_CANID;
+  msg.len = 5;
+
+  msg.buf[7] = error + ERROR_OFFSET;
+  
+  msg.buf[6] = (data >> 24) & 0xFF;
+  msg.buf[5] = (data >> 16) & 0xFF;
+  msg.buf[4] = (data >> 8) & 0xFF;
+  msg.buf[3] = (data) & 0xFF;
+  
+  return msg;
+}
+
+CAN_message_t Shutdown_Message_Factory::full(uint8_t error, uint32_t data, uint8_t index){
+  CAN_message_t msg;
+  msg.id = SHUTDOWN_ERROR_CANID;
+  msg.len = 8;
+
+  msg.buf[7] = error + ERROR_OFFSET;
+  
+  msg.buf[6] = (data >> 24) & 0xFF;
+  msg.buf[5] = (data >> 16) & 0xFF;
+  msg.buf[4] = (data >> 8) & 0xFF;
+  msg.buf[3] = (data) & 0xFF;
+
+  msg.buf[2] = index;
+  
+  return msg;
+}
 

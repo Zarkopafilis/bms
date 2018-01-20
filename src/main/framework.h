@@ -14,6 +14,12 @@ importantly LTC60842 functions to make them work for teensy. */
 void output_low(uint8_t pin);
 void output_high(uint8_t pin);
 
+//Index of the battery box, can be anything
+//Used only to send data metrics to the can bus as the first byte of the bms messages
+#define BOX_LEFT 0
+#define BOX_RIGHT 1
+#define BOX_ID BOX_LEFT
+
 // Look at http://liionbms.com/php/standards.php
 #if BOXID == BOX_LEFT
   #define LIION_START_CANID 0x64D
@@ -35,6 +41,27 @@ void output_high(uint8_t pin);
 
 #define IVT_SUCCESS 1
 #define IVT_OLD_MEASUREMENT -1
+
+#define SHUTDOWN_ERROR_CANID 0x600
+
+/* Can Message Layout on shutdown */
+// buf[7] => First bit is for left or right battery box, other 6 for the error code
+// buf[6 ~ 3] => Value (mV, mA, Celsius (negative ~ positive)])
+// buf[2] => Index (If any) 
+
+#if BOX_ID == BOX_LEFT
+  #define ERROR_OFFSET 0
+#else
+  #define ERROR_OFFSET 32 //B 100000
+#endif
+
+#define ERROR_UNKNOWN_CRITICAL 0
+#define ERROR_LTC_LOSS 1 /* Pec is wrong */
+#define ERROR_IVT_LOSS 2 /* No new IVT measurements on period (possible sensor loss) */
+#define ERROR_VOLTS 3 /* Probably never happens in drive mode */
+#define ERROR_AMPS 4 /* Overcurrent */
+#define ERROR_TEMP 5 /* Too Cold / Too Hot */
+#define ERROR_MAX_MEASURE_DURATION 6 /* > 500mS loop time */
 
 typedef struct ivt_measure_frame
 {
@@ -199,6 +226,15 @@ class Charger_Dummy : public Charger{
     Charger_Dummy();
   
     void send_charge_message(); 
+};
+
+class Shutdown_Message_Factory{
+  public:
+    static CAN_message_t simple(uint8_t error);
+
+    static CAN_message_t data(uint8_t error, uint32_t data);
+
+    static CAN_message_t full(uint8_t error, uint32_t data, uint8_t index);
 };
 
 #endif //FRAMEWORK_H
