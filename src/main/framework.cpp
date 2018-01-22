@@ -451,6 +451,18 @@ void BMS::tick()
     }
 }
 
+uint8_t BMS::get_total_voltage(){
+    uint8_t total_volts = 0;
+    for(uint8_t addr = 0; addr < total_ic; addr++)
+    {
+        for(uint8_t cell = 0; cell < (cell_end - cell_start); cell++)
+        {
+            total_volts += *(cell_codes + addr * (cell_end - cell_start) + cell);
+        }
+    }
+    return total_volts;
+}
+
 CAN_message_t Liion_Bms_Can_Adapter::VoltageMinMax(BMS * bms){
   CAN_message_t msg;
   msg.id = LIION_START_CANID + LIION_VOLT_MIN_MAX_OFFSET;
@@ -540,4 +552,27 @@ CAN_message_t Shutdown_Message_Factory::full(uint8_t error, uint32_t data, uint8
   
   return msg;
 }
+
+Other_Battery_Box::Other_Battery_Box(FlexCAN * can) : can(can) {}
+
+void Other_Battery_Box::update(CAN_message_t message){
+  if(message.id == OTHER_BOX_VOLTAGE_CANID){
+    uint8_t volts = message.buf[7];
+    this->volts = volts;
+  }
+}
+
+void Other_Battery_Box::send_total_voltage(uint8_t volts){
+  CAN_message_t msg;
+  msg.id = CURRENT_BOX_VOLTAGE_CANID;
+  msg.len = 8;
+
+  msg.buf[7] = (volts);
+  can->write(msg);
+}
+
+uint8_t Other_Battery_Box::get_volts(){ return this->volts; }
+
+uint32_t const * Other_Battery_Box::get_ids(){ return this->ids; }
+uint32_t Other_Battery_Box::get_id_num(){ return this->id_num; }
 

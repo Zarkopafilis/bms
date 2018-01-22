@@ -73,13 +73,20 @@ const uint8_t charge_config[6] =
 void shut_car_down(CAN_message_t);
 void critical_callback(BmsCriticalFrame_t);
 
+void tick_can_sensors();
+
 float volts_to_celsius(float, float);
 float uint16_volts_to_float(uint16_t);
 
 LT_SPI * lt_spi;
 LTC6804_2 * ltc;
+
 BMS * bms;
+
 IVT * ivt;
+
+Other_Battery_Box * other_box;
+
 FlexCAN Can(500000);
 
 Charger * charger;
@@ -90,7 +97,8 @@ Charger * charger;
 #define CAN_SENSOR_NUM 1
 Can_Sensor * can_sensors[]
 {
-    ivt
+    ivt,
+    other_box
 };
 
 inline int isCharging()
@@ -106,6 +114,22 @@ inline int isPrecharging(){
 
 void precharge(){
     prech = 1;
+
+    #if BOX_ID == BOX_RIGHT
+      while(other_box->get_volts() == 0){
+        tick_can_sensors();
+      }
+
+      float target_voltage = 0.9 * other_box->get_volts();
+
+      while(ivt->tick().volts < target_voltage){
+        tick_can_sensors();
+      }
+      //Activate some pin
+    #else
+      bms->tick();
+      other_box->send_total_voltage(bms->get_total_voltage());
+    #endif
 
     prech = 0;
 }
@@ -151,6 +175,8 @@ void setup()
     charger = new Charger_Dummy();
     //charger = new Charger(&Can, 0, 0);
 
+    other_box = new Other_Battery_Box(&Can);
+
     precharge();
 }
 
@@ -172,29 +198,7 @@ void loop()
 
         measure_cycle_start = millis();
 
-#if CAN_ENABLE
-        //Gather input from CAN -- there is a need to centralize this because you can't have multiple isntances reading all
-        //messages and only grabbing their own, if you read a message, you consume it forever.
-        while(Can.available() == 1)
-        {
-            CAN_message_t msg;
-            Can.read(msg);
-            /* For every sensor declared, update it with the new message, if IDs match
-               BMS needs new sensor data, this is why it's done first.*/
-            for(uint32_t i = 0; i < CAN_SENSOR_NUM; i++)
-            {
-                Can_Sensor * s = can_sensors[i];
-
-                for(uint32_t j = 0; j < s->get_id_num(); j++){
-                    if(msg.id == *(s->get_ids() + j))
-                    {
-                        s->update(msg);
-                        break;
-                    }
-                }  
-            }
-        }
-#endif
+        tick_can_sensors();
 
         //Tick BMS
         bms->tick();
@@ -340,6 +344,32 @@ void shut_car_down(CAN_message_t periodic)
         }
         //Loop endlessly in chaos
     }
+}
+
+void tick_can_sensors(){
+  #if CAN_ENABLE
+        //Gather input from CAN -- there is a need to centralize this because you can't have multiple isntances reading all
+        //messages and only grabbing their own, if you read a message, you consume it forever.
+        while(Can.available() == 1)
+        {
+            CAN_message_t msg;
+            Can.read(msg);
+            /* For every sensor declared, update it with the new message, if IDs match
+               BMS needs new sensor data, this is why it's done first.*/
+            for(uint32_t i = 0; i < CAN_SENSOR_NUM; i++)
+            {
+                Can_Sensor * s = can_sensors[i];
+
+                for(uint32_t j = 0; j < s->get_id_num(); j++){
+                    if(msg.id == *(s->get_ids() + j))
+                    {
+                        s->update(msg);
+                        break;
+                    }
+                }  
+            }
+        }
+#endif
 }
 
 /* Convert volts to celsius on a 10k thermistor, while given a reference voltage */

@@ -21,7 +21,7 @@ void output_high(uint8_t pin);
 #define BOX_ID BOX_LEFT
 
 // Look at http://liionbms.com/php/standards.php
-#if BOXID == BOX_LEFT
+#if BOX_ID == BOX_LEFT
   #define LIION_START_CANID 0x64D
 #else
   #define LIION_START_CANID 0x61D
@@ -35,12 +35,14 @@ void output_high(uint8_t pin);
   #define IVT_CURRENT_CANID 0x521
 #endif
 
-#ifndef IVT_VOLTAGE_CANID
-  #define IVT_VOLTAGE_CANID 0x522
-#endif
 
-#define IVT_SUCCESS 1
-#define IVT_OLD_MEASUREMENT -1
+#if BOX_ID == BOX_LEFT
+  #define OTHER_BOX_VOLTAGE_CANID 0x604
+  #define CURRENT_BOX_VOLTAGE_CANID 0x605
+#else
+  #define OTHER_BOX_VOLTAGE_CANID 0x605
+  #define CURRENT_BOX_VOLTAGE_CANID 0x604
+#endif
 
 #define SHUTDOWN_ERROR_CANID 0x600
 
@@ -58,10 +60,17 @@ void output_high(uint8_t pin);
 #define ERROR_UNKNOWN_CRITICAL 0
 #define ERROR_LTC_LOSS 1 /* Pec is wrong */
 #define ERROR_IVT_LOSS 2 /* No new IVT measurements on period (possible sensor loss) */
-#define ERROR_VOLTS 3 /* Probably never happens in drive mode */
+#define ERROR_VOLTS 3 /* Probably happens in drive mode */
 #define ERROR_AMPS 4 /* Overcurrent */
 #define ERROR_TEMP 5 /* Too Cold / Too Hot */
 #define ERROR_MAX_MEASURE_DURATION 6 /* > 500mS loop time */
+
+#ifndef IVT_VOLTAGE_CANID
+  #define IVT_VOLTAGE_CANID 0x522
+#endif
+
+#define IVT_SUCCESS 1
+#define IVT_OLD_MEASUREMENT -1
 
 typedef struct ivt_measure_frame
 {
@@ -147,53 +156,55 @@ static constexpr BmsCriticalFrame_t bms_current_error{-2, empty_float_index, emp
 //The whole system works in a matter of 'ticks' as a dinstinct time frame. Previous values are cached.
 class BMS
 {
-public:
-    BMS(LTC6804_2 * ltc, IVT * ivt,
-        uint8_t total_ic,
-        float overvolts,
-        float undervolts,
-        float overtemp,
-        float undertemp,
-        uint8_t cell_start, uint8_t cell_end,
-        uint8_t aux_start, uint8_t aux_end,
-        const uint8_t conf[6],
-        void (* critical_callback)(BmsCriticalFrame_t),
-        float (* uv_to_float)(uint16_t),
-        float (* v_to_celsius)(float, float));
-
-    ~BMS();
-
-    void tick();
-    void set_cfg(const uint8_t conf[6]);
-
-    uint16_t * cell_codes;
-    uint16_t * aux_codes;
-
-    LTC6804_2 * const ltc;
-    IVT * const ivt;
-
-    const uint8_t total_ic;
-    const float ov, uv, ot, ut;
-    const uint8_t cell_start, cell_end, aux_start, aux_end;
+    public:
+        BMS(LTC6804_2 * ltc, IVT * ivt,
+            uint8_t total_ic,
+            float overvolts,
+            float undervolts,
+            float overtemp,
+            float undertemp,
+            uint8_t cell_start, uint8_t cell_end,
+            uint8_t aux_start, uint8_t aux_end,
+            const uint8_t conf[6],
+            void (* critical_callback)(BmsCriticalFrame_t),
+            float (* uv_to_float)(uint16_t),
+            float (* v_to_celsius)(float, float));
+    
+        ~BMS();
+    
+        void tick();
+        void set_cfg(const uint8_t conf[6]);
+    
+        uint16_t * cell_codes;
+        uint16_t * aux_codes;
+    
+        LTC6804_2 * const ltc;
+        IVT * const ivt;
+    
+        const uint8_t total_ic;
+        const float ov, uv, ot, ut;
+        const uint8_t cell_start, cell_end, aux_start, aux_end;
 
     protected:
       uint8_t const * config;
 
     public:
     
-    void (* const critical_callback)(BmsCriticalFrame_t);
-    float (* const uv_to_float)(uint16_t);
-    float (* const v_to_celsius)(float, float);
+      void (* const critical_callback)(BmsCriticalFrame_t);
+      float (* const uv_to_float)(uint16_t);
+      float (* const v_to_celsius)(float, float);
+  
+      /* The following return the min/max value along with the index of it [slave * (range) + slot] */
+      Float_Index_Tuple_t get_volts(bool greater);
+      Float_Index_Tuple_t get_temp(bool greater);
+  
+      Float_Index_Tuple_t get_min_volts();
+      Float_Index_Tuple_t get_max_volts();
+      
+      Float_Index_Tuple_t get_min_temp();
+      Float_Index_Tuple_t get_max_temp();
 
-    /* The following return the min/max value along with the index of it [slave * (range) + slot] */
-    Float_Index_Tuple_t get_volts(bool greater);
-    Float_Index_Tuple_t get_temp(bool greater);
-
-    Float_Index_Tuple_t get_min_volts();
-    Float_Index_Tuple_t get_max_volts();
-    
-    Float_Index_Tuple_t get_min_temp();
-    Float_Index_Tuple_t get_max_temp();
+      uint8_t get_total_voltage();
 };
 
 //Drop in replacement for http://liionbms.com/php/standards.php
@@ -235,6 +246,29 @@ class Shutdown_Message_Factory{
     static CAN_message_t data(uint8_t error, uint32_t data);
 
     static CAN_message_t full(uint8_t error, uint32_t data, uint8_t index);
+};
+
+//The other battery box
+class Other_Battery_Box : public Can_Sensor{
+    public:
+      Other_Battery_Box(FlexCAN * can);
+    
+      void update(CAN_message_t message);
+
+      void send_total_voltage(uint8_t volts);
+
+      uint8_t get_volts();
+  
+      uint32_t const * get_ids();
+      uint32_t get_id_num();
+    protected:
+      static const uint32_t id_num = 1;
+      const uint32_t ids[id_num] = {OTHER_BOX_VOLTAGE_CANID};
+
+      FlexCAN * const can; 
+
+      //volts being 0 is illegal value // uncached
+      uint8_t volts = 0;
 };
 
 #endif //FRAMEWORK_H
