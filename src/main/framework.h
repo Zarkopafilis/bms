@@ -204,7 +204,7 @@ class BMS
       Float_Index_Tuple_t get_min_temp();
       Float_Index_Tuple_t get_max_temp();
 
-      uint8_t get_total_voltage();
+      float get_total_voltage();
 };
 
 //Drop in replacement for http://liionbms.com/php/standards.php
@@ -255,9 +255,9 @@ class Other_Battery_Box : public Can_Sensor{
     
       void update(CAN_message_t message);
 
-      void send_total_voltage(uint8_t volts);
+      void send_total_voltage(float volts);
 
-      uint8_t get_volts();
+      float get_volts();
   
       uint32_t const * get_ids();
       uint32_t get_id_num();
@@ -268,7 +268,7 @@ class Other_Battery_Box : public Can_Sensor{
       FlexCAN * const can; 
 
       //volts being 0 is illegal value // uncached
-      uint8_t volts = 0;
+      float volts = 0;
 };
 
 #endif //FRAMEWORK_H
