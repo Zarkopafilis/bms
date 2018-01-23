@@ -91,14 +91,17 @@ FlexCAN Can(500000);
 
 Charger * charger;
 
+Configurator * configurator;
+
 //Collection of all the Can_Sensors that are going
 //to be pinged whenever there is a new message
 //matching their id
-#define CAN_SENSOR_NUM 1
+#define CAN_SENSOR_NUM 3
 Can_Sensor * can_sensors[]
 {
     ivt,
-    other_box
+    other_box,
+    configurator
 };
 
 inline int isCharging()
@@ -133,6 +136,8 @@ void precharge(){
 
     prech = 0;
 }
+
+void charge(){}
 
 //This is the entry point. loop() is called after
 void setup()
@@ -172,10 +177,16 @@ void setup()
                   &uint16_volts_to_float,
                   &volts_to_celsius);
 
-    charger = new Charger_Dummy();
-    //charger = new Charger(&Can, 0, 0);
-
     other_box = new Other_Battery_Box(&Can);
+
+    configurator = new Configurator(&Can);
+
+    if(isCharging()){
+      charger = new Charger_Dummy();
+      //charger = new Charger(&Can, 0, 0);
+      charge();
+      while(1){}
+    }
 
     precharge();
 }

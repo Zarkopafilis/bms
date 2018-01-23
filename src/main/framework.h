@@ -7,6 +7,7 @@ importantly LTC60842 functions to make them work for teensy. */
 #include <stdint.h>
 #include "LTC6804_2.h"
 #include "FlexCAN.h"
+#include <EEPROM.h>
 
 #define DRIVE_MODE 0
 #define CHARGE_MODE 1
@@ -27,6 +28,7 @@ void output_high(uint8_t pin);
   #define LIION_START_CANID 0x61D
 #endif
 
+
 #define LIION_VOLT_MIN_MAX_OFFSET 3
 
 #define CHARGER_COMMAND_CANID 0x618
@@ -43,6 +45,19 @@ void output_high(uint8_t pin);
   #define OTHER_BOX_VOLTAGE_CANID 0x605
   #define CURRENT_BOX_VOLTAGE_CANID 0x604
 #endif
+
+
+#define CONFIGURATION_CANID 0x6AA
+
+//first bit of buf[8] is box left (0) and box right (1)
+#define CONFIGURATION_ACK_CANID 0x6AB
+
+#define CONFIG_ADDRESS_START 10
+
+/* Every time a configuration message is received, byte(s) are written into the EEPROM:*/
+//buf[7] : Start Address
+//buf[6] : # Of Bytes to write (1~6)
+//buf[5~0] : Actual values
 
 #define SHUTDOWN_ERROR_CANID 0x600
 
@@ -269,6 +284,21 @@ class Other_Battery_Box : public Can_Sensor{
 
       //volts being 0 is illegal value // uncached
       float volts = 0;
+};
+
+class Configurator : public Can_Sensor{
+  public:
+      Configurator(FlexCAN * can);
+  
+      void update(CAN_message_t message);
+  
+      uint32_t const * get_ids();
+      uint32_t get_id_num();
+  protected:
+     static const uint32_t id_num = 1;
+     const uint32_t ids[id_num] = {CONFIGURATION_CANID};
+
+     FlexCAN * const can; 
 };
 
 #endif //FRAMEWORK_H

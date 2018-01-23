@@ -579,3 +579,29 @@ float Other_Battery_Box::get_volts(){ return this->volts; }
 uint32_t const * Other_Battery_Box::get_ids(){ return this->ids; }
 uint32_t Other_Battery_Box::get_id_num(){ return this->id_num; }
 
+Configurator::Configurator(FlexCAN * can) : can(can) {}
+
+void Configurator::update(CAN_message_t message){
+  if(message.id == CONFIGURATION_CANID){
+    uint8_t addr = message.buf[7];
+    uint8_t num = message.buf[6];
+
+    if(addr < CONFIG_ADDRESS_START || addr > EEPROM.length() || num > 6){ return; }
+
+    for(uint8_t i = 0; i < num; i++){
+      EEPROM.write(addr + i, message.buf[5 + i]);
+    }
+
+    CAN_message_t ack;
+    ack.id = CONFIGURATION_ACK_CANID;
+    ack.len = 8;
+    
+    ack.buf[7] = BOX_ID * 32;
+
+    can->write(ack);
+  }
+}
+  
+uint32_t const * Configurator::get_ids(){ return this->ids; }
+uint32_t Configurator::get_id_num(){ return this->id_num; }
+
