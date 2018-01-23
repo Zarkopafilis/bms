@@ -3,7 +3,6 @@ importantly LTC60842 functions to make them work for teensy. */
 
 #include <Arduino.h>
 #include "framework.h"
-#include "config.h"
 
 void output_low(uint8_t pin)
 {

@@ -7,7 +7,7 @@ importantly LTC60842 functions to make them work for teensy. */
 #include <stdint.h>
 #include "LTC6804_2.h"
 #include "FlexCAN.h"
-#include <EEPROM.h>
+#include "config.h"
 
 #define DRIVE_MODE 0
 #define CHARGE_MODE 1
@@ -56,11 +56,6 @@ void output_high(uint8_t pin);
 
 //first bit of buf[8] is box left (0) and box right (1)
 #define CONFIGURATION_ACK_CANID 0x6AB
-
-#define CONFIG_ADDRESS_VALIDITY 0
-#define CONFIG_ADDRESS_VALIDITY_VAL 0xAB
-
-#define CONFIG_ADDRESS_START 10
 
 
 /* Can Message Layout on shutdown */

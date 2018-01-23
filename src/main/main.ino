@@ -4,27 +4,11 @@
 
 #define SERIAL_BAUD_RATE 9600
 
-/* Values for isCharging mode may be different; these are for drive mode */
-
-//Names of some constants are like this in order to be the same
-//with the LTC6804 datasheet
-//Temperature Voltage Read for Undertemping and Overtemping
-#define TUT 0
-#define TOT 100
-
-//Voltage for Undervolting and Overvolting
-#define VUV 2
-#define VOV 5
-
 #define SHUTDOWN_PIN 15
 #define SHUTDOWN_PIN_IDLE 1 //If SHUTDOWN_PIN shifts to non SHUTDOWN_PIN_IDLE => Car is latched to shut down
 
 #define CHARGE_PIN 16
 #define CHARGE_PIN_IDLE 0 //If CHARGE_PIN == CHARGE_PIN_IDLE => Drive Mode
-
-//Cell discharge permitted
-//Disabled = 0 | Enabled = 1
-#define DCP_MODE DCP_DISABLED
 
 //Number of LTC6811-2 Multicell battery monitors
 //When setting up, make sure that id's start from 0 and go up by increments of 1
@@ -59,17 +43,6 @@ const uint8_t drive_config[6] =
     0B00000000 //DCTO[3~0] DCC 12~9
 };
 
-//Will change
-const uint8_t charge_config[6] =
-{
-    0B00000100, //GPIO 5~1 REFON DTEN ADCOPT
-    0B00000000, //VUV[7~0]
-    0B00000000, //VOV[3~0] VOV[11~8]
-    0B00000000, //VOV[11~4]
-    0B00000000, //DCC 8~1
-    0B00000000 //DCTO[3~0] DCC 12~9
-};
-
 void shut_car_down(CAN_message_t);
 void critical_callback(BmsCriticalFrame_t);
 
@@ -77,6 +50,8 @@ void tick_can_sensors();
 
 float volts_to_celsius(float, float);
 float uint16_volts_to_float(uint16_t);
+
+Configuration * config;
 
 LT_SPI * lt_spi;
 LTC6804_2 * ltc;
@@ -159,6 +134,8 @@ void setup()
     Can.begin();
 #endif 
 
+    config = new Configuration();
+    
     /* Initialize all the sensors and external hardware as needed.
        They are modelled properly as classes in framework.h*/
     lt_spi = new LT_SPI();
@@ -170,7 +147,7 @@ void setup()
     ivt = new IVT_Dummy(2, 500);
 #endif
     bms = new BMS(ltc, ivt, SLAVE_NUM,
-                  VOV, VUV, TOT, TUT,
+                  config->get_overvolts(), config->get_undervolts(), config->get_undertemp(), config->get_overtemp(),
                   CELL_IGNORE_INDEX_START, CELL_IGNORE_INDEX_END, GPIO_IGNORE_INDEX_START, GPIO_IGNORE_INDEX_END,
                   drive_config,
                   &critical_callback,
