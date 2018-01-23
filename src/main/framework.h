@@ -47,24 +47,27 @@ void output_high(uint8_t pin);
 #endif
 
 
+/* Every time a configuration message is received, byte(s) are written into the EEPROM:*/
+//buf[7] : Start Address
+//buf[6] : # Of Bytes to write (1~6)
+//buf[5~0] : Actual values
+//if address == 0xFF, config is being reset on defaults on next boot.
 #define CONFIGURATION_CANID 0x6AA
 
 //first bit of buf[8] is box left (0) and box right (1)
 #define CONFIGURATION_ACK_CANID 0x6AB
 
+#define CONFIG_ADDRESS_VALIDITY 0
+#define CONFIG_ADDRESS_VALIDITY_VAL 0xAB
+
 #define CONFIG_ADDRESS_START 10
 
-/* Every time a configuration message is received, byte(s) are written into the EEPROM:*/
-//buf[7] : Start Address
-//buf[6] : # Of Bytes to write (1~6)
-//buf[5~0] : Actual values
-
-#define SHUTDOWN_ERROR_CANID 0x600
 
 /* Can Message Layout on shutdown */
 // buf[7] => First bit is for left or right battery box, other 6 for the error code
 // buf[6 ~ 3] => Value (mV, mA, Celsius (negative ~ positive)])
 // buf[2] => Index (If any) 
+#define SHUTDOWN_ERROR_CANID 0x600
 
 #if BOX_ID == BOX_LEFT
   #define ERROR_OFFSET 0

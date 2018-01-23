@@ -586,10 +586,14 @@ void Configurator::update(CAN_message_t message){
     uint8_t addr = message.buf[7];
     uint8_t num = message.buf[6];
 
-    if(addr < CONFIG_ADDRESS_START || addr > EEPROM.length() || num > 6){ return; }
-
-    for(uint8_t i = 0; i < num; i++){
-      EEPROM.write(addr + i, message.buf[5 + i]);
+    if(addr == 0xFF){
+      EEPROM.write(CONFIG_ADDRESS_VALIDITY, 0xFF);
+    }else if(addr < CONFIG_ADDRESS_START || addr > EEPROM.length() || num > 6){
+      return; 
+    }else{
+      for(uint8_t i = 0; i < num; i++){
+        EEPROM.write(addr + i, message.buf[5 + i]);
+      }
     }
 
     CAN_message_t ack;
