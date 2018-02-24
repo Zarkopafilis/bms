@@ -33,10 +33,16 @@ void output_high(uint8_t pin);
 
 #define CHARGER_COMMAND_CANID 0x618
 
+#define SEND_ALL_VOLTS_REQUEST_CANID 0x6FE
+#define SEND_ALL_VOLTS_RESPONSE_CANID 0x6FF
+
+
 #ifndef IVT_CURRENT_CANID
   #define IVT_CURRENT_CANID 0x521
 #endif
-
+#ifndef IVT_VOLTAGE_CANID
+  #define IVT_VOLTAGE_CANID 0x522
+#endif
 
 #if BOX_ID == BOX_LEFT
   #define OTHER_BOX_VOLTAGE_CANID 0x604
@@ -77,10 +83,6 @@ void output_high(uint8_t pin);
 #define ERROR_AMPS 4 /* Overcurrent */
 #define ERROR_TEMP 5 /* Too Cold / Too Hot */
 #define ERROR_MAX_MEASURE_DURATION 6 /* > 500mS loop time */
-
-#ifndef IVT_VOLTAGE_CANID
-  #define IVT_VOLTAGE_CANID 0x522
-#endif
 
 #define IVT_SUCCESS 1
 #define IVT_OLD_MEASUREMENT -1

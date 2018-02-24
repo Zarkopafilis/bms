@@ -33,4 +33,3 @@ uint16_t Configuration::read_uint16(uint16_t start_addr){
   return EEPROM.read(start_addr) << 8 | EEPROM.read(start_addr + 1);
 }
 
-

@@ -409,30 +409,6 @@ void BMS::tick()
         }
     }
 
-    //After Volts and Temps, read stuff from the current Can_Sensor
-    IVTMeasureFrame_t current_frame = this->ivt->tick();
-
-    if(current_frame.success == IVT_SUCCESS)
-    {
-#if DEBUG_CURRENT_VALUES
-        Serial.print("IVT Current: ");
-        Serial.print(current_frame.amps);
-        Serial.println(" A");
-#endif
-
-    }
-    else
-    {
-#if DEBUG_CURRENT_VALUES
-        if(current_frame.success == IVT_OLD_MEASUREMENT){
-          Serial.println("IVT Current sensor hasn't sent new measurement yet! Possible sensor loss!");
-        }else{
-          Serial.println("IVT Current sensor loss!");
-        }
-#endif
-        critical_callback(bms_current_error);
-    }
-
     //Defensively copy the measurements just so they can be read only
     for(uint8_t addr = 0; addr < total_ic; addr++)
     {
@@ -480,20 +456,20 @@ Charger::Charger(FlexCAN * can, uint16_t initial_volts, uint16_t initial_amps) :
 void Charger::send_charge_message(){
   CAN_message_t msg;
   msg.id = CHARGER_COMMAND_CANID;
-  msg.len = 8;
+  msg.len = 7;
   
-  msg.buf[6] = 0x80;
-  msg.buf[5] = 0x01;
-  msg.buf[4] = 0xF4;
+  msg.buf[0] = 0x80;
+  msg.buf[1] = 0x01;
+  msg.buf[2] = 0xF4;
 
   //Volts (SI resolution)
   msg.buf[3] = (volts >> 8) & 0xFF;
-  msg.buf[2] = volts & 0xFF;
+  msg.buf[4] = volts & 0xFF;
 
   //Amps (0.1 resolution)
   uint16_t send_amps = amps * 10;
-  msg.buf[1] = (send_amps >> 8) & 0xFF;
-  msg.buf[0] = send_amps & 0xFF;
+  msg.buf[5] = (send_amps >> 8) & 0xFF;
+  msg.buf[6] = send_amps & 0xFF;
 
   this->can->write(msg);
 }
@@ -516,7 +492,13 @@ CAN_message_t Shutdown_Message_Factory::simple(uint8_t error){
   msg.len = 8;
 
   msg.buf[7] = error + ERROR_OFFSET;
-  
+  msg.buf[6] = 0;
+  msg.buf[5] = 0;
+  msg.buf[4] = 0;
+  msg.buf[3] = 0;
+  msg.buf[2] = 0;
+  msg.buf[1] = 0;
+  msg.buf[0] = 0;
   return msg;
 }
 
@@ -531,6 +513,9 @@ CAN_message_t Shutdown_Message_Factory::data(uint8_t error, uint32_t data){
   msg.buf[5] = (data >> 16) & 0xFF;
   msg.buf[4] = (data >> 8) & 0xFF;
   msg.buf[3] = (data) & 0xFF;
+  msg.buf[2] = 0;
+  msg.buf[1] = 0;
+  msg.buf[0] = 0;
   
   return msg;
 }
@@ -548,6 +533,8 @@ CAN_message_t Shutdown_Message_Factory::full(uint8_t error, uint32_t data, uint8
   msg.buf[3] = (data) & 0xFF;
 
   msg.buf[2] = index;
+  msg.buf[1] = 0;
+  msg.buf[0] = 0;
   
   return msg;
 }
@@ -570,6 +557,12 @@ void Other_Battery_Box::send_total_voltage(float volts){
 
   msg.buf[7] = (v >> 8) & 0xFF;
   msg.buf[6] = (v) & 0xFF;
+  msg.buf[5] = 0;
+  msg.buf[4] = 0;
+  msg.buf[3] = 0;
+  msg.buf[2] = 0;
+  msg.buf[1] = 0;
+  msg.buf[0] = 0;
   can->write(msg);
 }
 
@@ -597,9 +590,9 @@ void Configurator::update(CAN_message_t message){
 
     CAN_message_t ack;
     ack.id = CONFIGURATION_ACK_CANID;
-    ack.len = 8;
+    ack.len = 1;
     
-    ack.buf[7] = BOX_ID * 32;
+    ack.buf[0] = BOX_ID * 32;
 
     can->write(ack);
   }

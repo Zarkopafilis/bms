@@ -98,6 +98,7 @@ void precharge(){
         tick_can_sensors();
       }
 
+      
       float target_voltage = 0.9 * other_box->get_volts();
 
       while(ivt->tick().volts < target_voltage){
@@ -336,12 +337,49 @@ void shut_car_down(CAN_message_t periodic)
 
 void tick_can_sensors(){
   #if CAN_ENABLE
-        //Gather input from CAN -- there is a need to centralize this because you can't have multiple isntances reading all
-        //messages and only grabbing their own, if you read a message, you consume it forever.
+        // Gather input from CAN -- there is a need to centralize this because you can't have multiple isntances reading all
+        // messages and only grabbing their own, if you read a message, you consume it forever.
         while(Can.available() == 1)
         {
             CAN_message_t msg;
             Can.read(msg);
+
+            msg.len = 8;
+            msg.id = SEND_ALL_VOLTS_RESPONSE_CANID;
+            if(msg.id == SEND_ALL_VOLTS_REQUEST_CANID){
+                for(uint8_t addr = 0; addr < total_ic; addr++)
+                {
+                    for(uint8_t cell = 0; cell < (cell_end - cell_start); cell++)
+                    {
+                        uint16_t val = *(cell_codes + addr * (cell_end - cell_start) + cell);
+
+                        msg.buf[6] = (val >> 8) & 0xFF;
+                        msg.buf[5] = val & 0xFF;
+                        msg.buf[4] = cell;
+                        msg.buf[3] = addr;
+                        msg.buf[2] = 0;
+                        msg.buf[1] = 0;
+                        msg.buf[0] = ERROR_OFFSET;
+                        Can.write(msg);
+                    }
+                }
+                for(uint8_t addr = 0; addr < total_ic; addr++)
+                {
+                    for(uint8_t temp = 0; temp < (aux_end - aux_start + 1); temp++) // +1 to include VRef
+                    {
+                        uint16_t val = *(this->aux_codes + addr * (aux_end - aux_start + 1) + temp);
+
+                        msg.buf[6] = (val >> 8) & 0xFF;
+                        msg.buf[5] = val & 0xFF;
+                        msg.buf[4] = cell;
+                        msg.buf[3] = addr;
+                        msg.buf[2] = 0;
+                        msg.buf[1] = 0xFF;
+                        msg.buf[0] = ERROR_OFFSET;
+                        Can.write(msg);
+                    }
+                }
+            }
             /* For every sensor declared, update it with the new message, if IDs match
                BMS needs new sensor data, this is why it's done first.*/
             for(uint32_t i = 0; i < CAN_SENSOR_NUM; i++)
