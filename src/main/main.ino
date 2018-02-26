@@ -99,9 +99,9 @@ void precharge(){
       }
 
       
-      float target_voltage = 0.9 * other_box->get_volts();
+      float target_voltage = bms->get_total_voltage() + other_box->get_volts();
 
-      while(ivt->tick().volts < target_voltage){
+      while(ivt->tick().volts < 0.9 * target_voltage){
         tick_can_sensors();
       }
       //Activate some pin
