@@ -98,7 +98,7 @@ void precharge(){
         tick_can_sensors();
       }
 
-      
+      bms->tick();
       float target_voltage = bms->get_total_voltage() + other_box->get_volts();
 
       while(ivt->tick().volts < 0.9 * target_voltage){
